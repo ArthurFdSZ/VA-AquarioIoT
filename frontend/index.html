@@ -1,0 +1,346 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VA automações | Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <div class="app">
+
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">VA</div>
+                <div>
+                    <h1>VA automações</h1>
+                    <span>Controle inteligente</span>
+                </div>
+            </div>
+
+            <nav class="menu">
+                <a href="#dashboard" class="menu-item active">
+                    <span>▦</span> Dashboard
+                </a>
+                <a href="#monitoramento" class="menu-item">
+                    <span>⌁</span> Monitoramento
+                </a>
+                <a href="#configuracoes" class="menu-item">
+                    <span>⚙</span> Configurações
+                </a>
+                <a href="#eventos" class="menu-item">
+                    <span>◷</span> Histórico
+                </a>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <div class="connection-indicator">
+                    <span id="connectionDot" class="status-dot"></span>
+                    <div>
+                        <strong id="connectionText">Verificando API...</strong>
+                        <small>Conexão com o sistema</small>
+                    </div>
+                </div>
+                <p class="sidebar-version">VA automações · Versão 1.0</p>
+            </div>
+        </aside>
+
+        <main class="main-content">
+
+            <header class="topbar">
+                <div>
+                    <p class="eyebrow">CENTRAL DE CONTROLE</p>
+                    <h2>Monitoramento do aquário</h2>
+                    <p class="subtitle">Acompanhe os parâmetros e gerencie as configurações.</p>
+                </div>
+
+                <div class="topbar-right">
+                    <div class="system-status">
+                        <span class="status-dot online"></span>
+                        <span id="systemStatus">Sistema conectado à interface</span>
+                    </div>
+                    <div class="current-date" id="currentDate">--</div>
+                </div>
+            </header>
+
+            <section id="dashboard" class="metrics-grid">
+
+                <article class="metric-card">
+                    <div class="metric-heading">
+                        <span>Temperatura atual</span>
+                        <span class="metric-icon cyan">♨</span>
+                    </div>
+                    <div class="metric-value" id="currentTemperature">-- °C</div>
+                    <div class="metric-footer">
+                        Desejada: <strong id="desiredTemperatureMetric">-- °C</strong>
+                    </div>
+                </article>
+
+                <article class="metric-card">
+                    <div class="metric-heading">
+                        <span>Aquecimento</span>
+                        <span class="metric-icon purple">⌁</span>
+                    </div>
+                    <div class="metric-value" id="heatingStatus">--</div>
+                    <div class="metric-footer" id="heatingDescription">
+                        Aguardando dados do sistema
+                    </div>
+                </article>
+
+                <article class="metric-card">
+                    <div class="metric-heading">
+                        <span>Próxima alimentação</span>
+                        <span class="metric-icon green">◷</span>
+                    </div>
+                    <div class="metric-value" id="nextFeeding">--:--</div>
+                    <div class="metric-footer" id="feedingDescription">
+                        Horário não configurado
+                    </div>
+                </article>
+
+                <article class="metric-card">
+                    <div class="metric-heading">
+                        <span>pH da água</span>
+                        <span class="metric-icon orange">◉</span>
+                    </div>
+                    <div class="metric-value" id="currentPh">--</div>
+                    <div class="metric-footer" id="phDescription">
+                        Aguardando medição
+                    </div>
+                </article>
+
+            </section>
+
+            <section class="overview-grid">
+
+                <article class="panel aquarium-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h3>Visão geral do aquário</h3>
+                            <p>Resumo do estado do sistema</p>
+                        </div>
+                        <span class="pill pill-blue">VA automações</span>
+                    </div>
+
+                    <div class="aquarium-visual">
+                        <div class="water-glow"></div>
+                        <div class="fish fish-one">›°)</div>
+                        <div class="fish fish-two">›°)</div>
+                        <div class="plant plant-one"></div>
+                        <div class="plant plant-two"></div>
+                        <div class="plant plant-three"></div>
+                        <div class="sand"></div>
+                        <div class="aquarium-label">
+                            <span class="status-dot online"></span>
+                            <span>Monitoramento do aquário</span>
+                        </div>
+                    </div>
+
+                    <div class="aquarium-details">
+                        <div>
+                            <span class="detail-label">Temperatura</span>
+                            <strong id="aquariumTemperature">Aguardando</strong>
+                        </div>
+                        <div>
+                            <span class="detail-label">pH</span>
+                            <strong id="aquariumPh">Aguardando</strong>
+                        </div>
+                        <div>
+                            <span class="detail-label">Automação</span>
+                            <strong id="automationStatus">Aguardando dados</strong>
+                        </div>
+                    </div>
+                </article>
+
+                <article id="eventos" class="panel events-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h3>Eventos recentes</h3>
+                            <p>Últimos registros do sistema</p>
+                        </div>
+                        <button class="text-button" id="refreshEvents">Atualizar</button>
+                    </div>
+
+                    <div id="eventsList" class="events-list">
+                        <div class="empty-state">Carregando eventos...</div>
+                    </div>
+                </article>
+
+            </section>
+
+            <section id="monitoramento" class="charts-grid">
+
+                <article class="panel chart-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h3>Temperatura da água</h3>
+                            <p>Histórico das medições registradas</p>
+                        </div>
+                        <span class="chart-unit">°C</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="temperatureChart"></canvas>
+                    </div>
+                </article>
+
+                <article class="panel chart-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h3>Nível de pH</h3>
+                            <p>Histórico das medições registradas</p>
+                        </div>
+                        <span class="chart-unit">pH</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="phChart"></canvas>
+                    </div>
+                </article>
+
+                <article class="panel chart-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h3>Consumo de ração</h3>
+                            <p>Quantidade registrada por alimentação</p>
+                        </div>
+                        <span class="chart-unit">g</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="foodChart"></canvas>
+                    </div>
+                </article>
+
+            </section>
+
+            <section id="configuracoes" class="bottom-grid">
+
+                <article class="panel settings-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h3>Configurações do aquário</h3>
+                            <p>Defina os parâmetros desejados</p>
+                        </div>
+                        <span class="pill pill-purple">Personalizável</span>
+                    </div>
+
+                    <form id="settingsForm">
+
+                        <div class="form-group">
+                            <label for="desiredTemperature">Temperatura desejada (°C)</label>
+                            <input
+                                type="number"
+                                id="desiredTemperature"
+                                name="temperatura_desejada"
+                                min="0"
+                                max="50"
+                                step="0.1"
+                                placeholder="Ex.: 26.5"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="feedingTime1">Alimentação 1</label>
+                                <input
+                                    type="time"
+                                    id="feedingTime1"
+                                    name="horario_alimentacao_1"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="feedingTime2">Alimentação 2</label>
+                                <input
+                                    type="time"
+                                    id="feedingTime2"
+                                    name="horario_alimentacao_2"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="foodAmount">Quantidade de ração (g)</label>
+                            <input
+                                type="number"
+                                id="foodAmount"
+                                name="quantidade_racao"
+                                min="0"
+                                step="0.1"
+                                placeholder="Ex.: 2.0"
+                                required
+                            >
+                        </div>
+
+                        <div class="settings-actions">
+                            <button type="submit" class="primary-button" id="saveSettings">
+                                Salvar configurações
+                            </button>
+                            <button type="button" class="secondary-button" id="reloadSettings">
+                                Restaurar salvas
+                            </button>
+                        </div>
+
+                        <p id="settingsMessage" class="form-message" role="status"></p>
+                    </form>
+                </article>
+
+                <article class="panel manual-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h3>Controle do sistema</h3>
+                            <p>Estado e informações da automação</p>
+                        </div>
+                        <span class="pill pill-green">Painel de controle</span>
+                    </div>
+
+                    <div class="control-status">
+                        <div class="control-status-icon">⌁</div>
+                        <div>
+                            <strong>Modo de operação</strong>
+                            <p id="operationMode">Aguardando integração com o ESP32</p>
+                        </div>
+                    </div>
+
+                    <div class="control-status">
+                        <div class="control-status-icon">♨</div>
+                        <div>
+                            <strong>Aquecimento</strong>
+                            <p id="heatingControlDescription">Sem informação do atuador</p>
+                        </div>
+                    </div>
+
+                    <div class="control-status">
+                        <div class="control-status-icon">◷</div>
+                        <div>
+                            <strong>Alimentador</strong>
+                            <p id="feederControlDescription">Aguardando informação do sistema</p>
+                        </div>
+                    </div>
+
+                    <div class="notice">
+                        <strong>Controles físicos</strong>
+                        <p>
+                            Os comandos manuais serão habilitados quando a comunicação
+                            de comandos com o ESP32 estiver implementada.
+                        </p>
+                    </div>
+                </article>
+
+            </section>
+
+            <footer class="footer">
+                <span>VA automações · Sistema de monitoramento de aquário</span>
+                <span id="lastUpdate">Última atualização: --</span>
+            </footer>
+
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

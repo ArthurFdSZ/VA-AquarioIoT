@@ -1,0 +1,1249 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --background: #080e19;
+    --sidebar: #0b1322;
+    --panel: #101b2c;
+    --panel-light: #142238;
+    --border: #213149;
+    --text: #edf4ff;
+    --muted: #8b9bb3;
+    --cyan: #22c7d6;
+    --green: #21d6a0;
+    --purple: #a78bfa;
+    --orange: #f5a65b;
+    --red: #fb7185;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background: var(--background);
+    color: var(--text);
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 14px;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+.app {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* SIDEBAR */
+
+.sidebar {
+    width: 245px;
+    flex-shrink: 0;
+    background: var(--sidebar);
+    border-right: 1px solid var(--border);
+    padding: 28px 18px;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 10;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 8px 34px;
+}
+
+.brand-icon {
+    width: 43px;
+    height: 43px;
+    border-radius: 13px;
+    display: grid;
+    place-items: center;
+    color: #06131c;
+    font-size: 17px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--cyan), var(--green));
+    box-shadow: 0 0 24px #22c7d633;
+}
+
+.brand h1 {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.brand span {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 5px;
+}
+
+.menu {
+    display: grid;
+    gap: 8px;
+}
+
+.menu-item {
+    color: var(--muted);
+    text-decoration: none;
+    padding: 13px 15px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: 0.2s;
+}
+
+.menu-item span {
+    font-size: 18px;
+    width: 20px;
+    text-align: center;
+}
+
+.menu-item:hover,
+.menu-item.active {
+    background: #14263b;
+    color: var(--cyan);
+}
+
+.sidebar-bottom {
+    margin-top: auto;
+}
+
+.connection-indicator {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 15px 12px;
+    background: #101d2e;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.connection-indicator strong {
+    display: block;
+    font-size: 12px;
+}
+
+.connection-indicator small {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-top: 5px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--orange);
+    flex-shrink: 0;
+}
+
+.status-dot.online {
+    background: var(--green);
+    box-shadow: 0 0 10px #21d6a055;
+}
+
+.status-dot.offline {
+    background: var(--red);
+    box-shadow: 0 0 10px #fb718555;
+}
+
+.sidebar-version {
+    color: #65758c;
+    font-size: 10px;
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* MAIN */
+
+.main-content {
+    width: calc(100% - 245px);
+    margin-left: 245px;
+    padding: 32px;
+    min-width: 0;
+}
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 28px;
+}
+
+.eyebrow {
+    color: var(--cyan);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+}
+
+.topbar h2 {
+    font-size: clamp(22px, 2.5vw, 30px);
+    letter-spacing: -1px;
+}
+
+.subtitle {
+    color: var(--muted);
+    margin-top: 9px;
+    font-size: 13px;
+}
+
+.topbar-right {
+    display: grid;
+    justify-items: end;
+    gap: 10px;
+}
+
+.system-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.current-date {
+    color: #c0cce0;
+    font-size: 12px;
+}
+
+/* METRICS */
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.metric-card,
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    min-width: 0;
+}
+
+.metric-card {
+    padding: 20px;
+    box-shadow: 0 8px 28px #00000012;
+}
+
+.metric-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--muted);
+    font-size: 12px;
+    gap: 8px;
+}
+
+.metric-icon {
+    width: 35px;
+    height: 35px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    font-size: 19px;
+    background: #ffffff08;
+}
+
+.metric-icon.cyan {
+    color: var(--cyan);
+    background: #22c7d61a;
+}
+
+.metric-icon.purple {
+    color: var(--purple);
+    background: #a78bfa1a;
+}
+
+.metric-icon.green {
+    color: var(--green);
+    background: #21d6a01a;
+}
+
+.metric-icon.orange {
+    color: var(--orange);
+    background: #f5a65b1a;
+}
+
+.metric-value {
+    font-size: clamp(23px, 2.4vw, 31px);
+    font-weight: 700;
+    letter-spacing: -1px;
+    margin: 18px 0 13px;
+    overflow-wrap: anywhere;
+}
+
+.metric-footer {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.metric-footer strong {
+    color: #d9e5f5;
+}
+
+/* PANELS */
+
+.overview-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.panel {
+    padding: 22px;
+}
+
+.panel-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.panel-heading h3 {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.panel-heading p {
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 7px;
+    line-height: 1.5;
+}
+
+.pill {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 7px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.pill-blue {
+    color: var(--cyan);
+    background: #22c7d61a;
+}
+
+.pill-purple {
+    color: var(--purple);
+    background: #a78bfa1a;
+}
+
+.pill-green {
+    color: var(--green);
+    background: #21d6a01a;
+}
+
+/* AQUARIUM VISUAL */
+
+.aquarium-visual {
+    height: 205px;
+    border: 1px solid #28516a;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    background:
+        radial-gradient(ellipse at 50% 5%, #37d5e344, transparent 55%),
+        linear-gradient(180deg, #123e59 0%, #0d2a43 65%, #122c3c 100%);
+}
+
+.water-glow {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        165deg,
+        transparent 0,
+        transparent 35px,
+        #8ceeff0a 36px,
+        transparent 38px
+    );
+}
+
+.sand {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 28px;
+    background: linear-gradient(180deg, #a28d67, #695c49);
+    clip-path: polygon(0 30%, 20% 5%, 48% 35%, 72% 0, 100% 25%, 100% 100%, 0 100%);
+}
+
+.fish {
+    position: absolute;
+    font-size: 30px;
+    color: #ffc66d;
+    text-shadow: 0 0 15px #ffb84a77;
+    animation: swim 7s ease-in-out infinite alternate;
+}
+
+.fish-one {
+    top: 58px;
+    left: 27%;
+}
+
+.fish-two {
+    top: 112px;
+    left: 62%;
+    color: #80e6df;
+    animation-delay: -3s;
+}
+
+@keyframes swim {
+    from { transform: translateX(-10px); }
+    to { transform: translateX(28px); }
+}
+
+.plant {
+    position: absolute;
+    bottom: 19px;
+    width: 9px;
+    height: 80px;
+    border-radius: 80% 10%;
+    background: linear-gradient(#4bd0a0, #176c58);
+    transform-origin: bottom;
+}
+
+.plant-one {
+    left: 12%;
+    transform: rotate(-18deg);
+}
+
+.plant-two {
+    left: 17%;
+    height: 58px;
+    transform: rotate(19deg);
+}
+
+.plant-three {
+    right: 12%;
+    height: 70px;
+    transform: rotate(16deg);
+}
+
+.aquarium-label {
+    position: absolute;
+    top: 13px;
+    left: 14px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #d4f6ff;
+    font-size: 10px;
+    background: #071c2c99;
+    padding: 8px 10px;
+    border-radius: 8px;
+}
+
+.aquarium-details {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 19px;
+}
+
+.aquarium-details > div {
+    background: #0b1524;
+    padding: 12px;
+    border-radius: 10px;
+    min-width: 0;
+}
+
+.detail-label {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 8px;
+}
+
+.aquarium-details strong {
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+/* EVENTS */
+
+.text-button {
+    border: 0;
+    background: transparent;
+    color: var(--cyan);
+    font-size: 11px;
+}
+
+.events-list {
+    display: grid;
+    gap: 0;
+}
+
+.event-item {
+    display: flex;
+    gap: 12px;
+    padding: 13px 0;
+    border-bottom: 1px solid #213149;
+}
+
+.event-item:last-child {
+    border-bottom: 0;
+}
+
+.event-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    color: var(--cyan);
+    background: #22c7d61a;
+    flex-shrink: 0;
+}
+
+.event-content {
+    min-width: 0;
+}
+
+.event-content strong {
+    display: block;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.event-content p {
+    color: var(--muted);
+    font-size: 10px;
+    margin-top: 5px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.empty-state {
+    color: var(--muted);
+    text-align: center;
+    padding: 30px 10px;
+    font-size: 12px;
+}
+
+/* CHARTS */
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.chart-panel {
+    min-height: 300px;
+}
+
+.chart-unit {
+    color: var(--muted);
+    font-size: 11px;
+    background: #ffffff08;
+    padding: 6px 9px;
+    border-radius: 7px;
+}
+
+.chart-container {
+    position: relative;
+    height: 210px;
+    width: 100%;
+}
+
+/* SETTINGS */
+
+.bottom-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.settings-panel form {
+    display: grid;
+    gap: 17px;
+}
+
+.form-group {
+    display: grid;
+    gap: 9px;
+    min-width: 0;
+}
+
+.form-group label {
+    color: #cbd7e8;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.form-group input {
+    width: 100%;
+    min-width: 0;
+    background: #0a1422;
+    border: 1px solid #2a3a52;
+    color: var(--text);
+    border-radius: 9px;
+    padding: 12px 13px;
+    outline: none;
+    transition: border 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 3px #22c7d61c;
+}
+
+.form-group input::placeholder {
+    color: #64758b;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.settings-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 3px;
+}
+
+.primary-button,
+.secondary-button {
+    border-radius: 9px;
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    transition: 0.2s;
+}
+
+.primary-button {
+    border: 0;
+    color: #06131c;
+    background: linear-gradient(100deg, var(--cyan), var(--green));
+}
+
+.primary-button:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+}
+
+.primary-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+    transform: none;
+}
+
+.secondary-button {
+    border: 1px solid #34465f;
+    background: #152238;
+    color: #c7d4e7;
+}
+
+.secondary-button:hover {
+    background: #1b2d46;
+}
+
+.form-message {
+    min-height: 16px;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.form-message.success {
+    color: var(--green);
+}
+
+.form-message.error {
+    color: var(--red);
+}
+
+/* CONTROL PANEL */
+
+.manual-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.control-status {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.control-status-icon {
+    width: 37px;
+    height: 37px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: #a78bfa1a;
+    color: var(--purple);
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.control-status strong {
+    display: block;
+    font-size: 12px;
+}
+
+.control-status p {
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 5px;
+    line-height: 1.5;
+}
+
+.notice {
+    margin-top: 18px;
+    padding: 14px;
+    background: #13243a;
+    border: 1px solid #29425e;
+    border-radius: 10px;
+}
+
+.notice strong {
+    color: var(--cyan);
+    font-size: 11px;
+}
+
+.notice p {
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.6;
+    margin-top: 7px;
+}
+
+/* FOOTER */
+
+.footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: #6f8098;
+    font-size: 10px;
+    padding: 8px 2px 2px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 1200px) {
+    .main-content {
+        padding: 24px;
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .charts-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .chart-panel:last-child {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 850px) {
+    .sidebar {
+        width: 70px;
+        padding: 20px 10px;
+    }
+
+    .brand {
+        justify-content: center;
+        padding: 0 0 28px;
+    }
+
+    .brand > div:last-child,
+    .menu-item:not(.active) {
+        font-size: 0;
+    }
+
+    .brand h1,
+    .brand span,
+    .menu-item {
+        overflow: hidden;
+    }
+
+    .menu-item {
+        justify-content: center;
+        padding: 13px 8px;
+        font-size: 0;
+    }
+
+    .menu-item span {
+        font-size: 19px;
+    }
+
+    .connection-indicator {
+        justify-content: center;
+        padding: 12px 5px;
+    }
+
+    .connection-indicator > div,
+    .sidebar-version {
+        display: none;
+    }
+
+    .main-content {
+        width: calc(100% - 70px);
+        margin-left: 70px;
+        padding: 20px;
+    }
+
+    .overview-grid,
+    .bottom-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 580px) {
+    .main-content {
+        padding: 14px;
+    }
+
+    .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .topbar-right {
+        justify-items: start;
+    }
+
+    .metrics-grid,
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-panel:last-child {
+        grid-column: auto;
+    }
+
+    .metric-card {
+        padding: 17px;
+    }
+
+    .panel {
+        padding: 17px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .aquarium-details {
+        grid-template-columns: 1fr;
+    }
+
+    .footer {
+        flex-direction: column;
+    }
+
+    .settings-actions {
+        flex-direction: column;
+    }
+
+    .settings-actions button {
+        width: 100%;
+    }
+}
+
+/* ======================================================
+   VA AUTOMAÇÕES — DASHBOARD EM UMA ÚNICA TELA
+   Aplicado em monitores maiores e com altura suficiente
+   ====================================================== */
+
+@media (min-width: 1201px) and (min-height: 761px) {
+    html,
+    body {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .app {
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .main-content {
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
+
+        display: grid;
+        grid-template-columns:
+            minmax(0, 1fr)
+            minmax(0, 1.08fr)
+            minmax(0, 0.95fr);
+
+        grid-template-rows:
+            auto
+            auto
+            minmax(0, 1.12fr)
+            minmax(0, 0.88fr);
+
+        gap: 12px;
+        padding: 14px 16px;
+        align-content: stretch;
+    }
+
+    /* Cabeçalho */
+    .topbar {
+        grid-column: 1 / -1;
+        margin: 0;
+        min-width: 0;
+        align-items: center;
+    }
+
+    .eyebrow {
+        margin-bottom: 5px;
+        font-size: 9px;
+    }
+
+    .topbar h2 {
+        font-size: clamp(19px, 1.7vw, 26px);
+    }
+
+    .subtitle {
+        margin-top: 4px;
+        font-size: 11px;
+    }
+
+    /* Cartões superiores */
+    .metrics-grid {
+        grid-column: 1 / -1;
+        margin: 0;
+        gap: 12px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .metric-card {
+        padding: 13px 15px;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .metric-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 17px;
+    }
+
+    .metric-value {
+        font-size: clamp(20px, 1.8vw, 28px);
+        margin: 9px 0 7px;
+    }
+
+    .metric-footer {
+        font-size: 10px;
+        line-height: 1.35;
+    }
+
+    /* Faz as seções internas ocuparem as posições do grid */
+    .overview-grid,
+    .bottom-grid {
+        display: contents;
+    }
+
+    .aquarium-panel {
+        grid-column: 1;
+        grid-row: 3;
+    }
+
+    .events-panel {
+        grid-column: 1;
+        grid-row: 4;
+    }
+
+    .charts-grid {
+        grid-column: 2;
+        grid-row: 3 / 5;
+
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        gap: 10px;
+        margin: 0;
+    }
+
+    .settings-panel {
+        grid-column: 3;
+        grid-row: 3;
+    }
+
+    .manual-panel {
+        grid-column: 3;
+        grid-row: 4;
+    }
+
+    /* Painéis */
+    .panel {
+        padding: 14px;
+        min-height: 0;
+        overflow: hidden;
+        border-radius: 13px;
+    }
+
+    .panel-heading {
+        margin-bottom: 12px;
+        gap: 8px;
+    }
+
+    .panel-heading h3 {
+        font-size: 14px;
+    }
+
+    .panel-heading p {
+        font-size: 10px;
+        margin-top: 4px;
+    }
+
+    .pill {
+        font-size: 9px;
+        padding: 5px 8px;
+    }
+
+    /* Aquário */
+    .aquarium-panel {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .aquarium-visual {
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 90px;
+    }
+
+    .aquarium-details {
+        gap: 7px;
+        margin-top: 9px;
+    }
+
+    .aquarium-details > div {
+        padding: 8px;
+    }
+
+    .detail-label {
+        font-size: 9px;
+        margin-bottom: 4px;
+    }
+
+    .aquarium-details strong {
+        font-size: 10px;
+    }
+
+    /* Eventos */
+    .events-panel {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .events-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #34465f transparent;
+    }
+
+    .event-item {
+        padding: 8px 0;
+        gap: 9px;
+    }
+
+    .event-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .event-content strong {
+        font-size: 10px;
+    }
+
+    .event-content p {
+        font-size: 9px;
+        margin-top: 2px;
+    }
+
+    .empty-state {
+        padding: 14px 8px;
+        font-size: 11px;
+    }
+
+    /* Gráficos */
+    .chart-panel {
+        flex: 1 1 0;
+        min-height: 0;
+        padding: 13px;
+
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .chart-panel .panel-heading {
+        margin-bottom: 8px;
+        flex-shrink: 0;
+    }
+
+    .chart-panel .panel-heading h3 {
+        font-size: 13px;
+    }
+
+    .chart-panel .panel-heading p {
+        font-size: 10px;
+        margin-top: 3px;
+    }
+
+    .chart-container {
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 0;
+    }
+
+    /* Formulário de configurações */
+    .settings-panel form {
+        gap: 10px;
+    }
+
+    .form-group {
+        gap: 5px;
+    }
+
+    .form-group label {
+        font-size: 10px;
+    }
+
+    .form-group input {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .form-row {
+        gap: 9px;
+    }
+
+    .settings-actions {
+        gap: 8px;
+        margin-top: 0;
+    }
+
+    .primary-button,
+    .secondary-button {
+        padding: 9px 10px;
+        font-size: 10px;
+    }
+
+    .form-message {
+        min-height: 12px;
+        font-size: 9px;
+    }
+
+    /* Controle do sistema */
+    .control-status {
+        gap: 9px;
+        padding: 8px 0;
+    }
+
+    .control-status-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 15px;
+    }
+
+    .control-status strong {
+        font-size: 10px;
+    }
+
+    .control-status p {
+        font-size: 9px;
+        margin-top: 2px;
+    }
+
+    .notice {
+        margin-top: 8px;
+        padding: 9px;
+    }
+
+    .notice strong {
+        font-size: 10px;
+    }
+
+    .notice p {
+        font-size: 9px;
+        line-height: 1.4;
+        margin-top: 4px;
+    }
+
+    /* Libera espaço vertical */
+    .footer {
+        display: none;
+    }
+}
+
+/* ======================================================
+   TELAS MENORES OU COM POUCA ALTURA
+   Mantém rolagem para evitar conteúdo comprimido
+   ====================================================== */
+
+@media (max-width: 1200px), (max-height: 760px) {
+    html,
+    body {
+        height: auto;
+        overflow: auto;
+    }
+
+    .app {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
+
+    .main-content {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+        display: block;
+    }
+
+    .footer {
+        display: flex;
+    }
+}
