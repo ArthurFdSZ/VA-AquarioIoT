@@ -274,7 +274,14 @@ def configuracoes_dispositivo():
 def registrar_temperatura(dados: TemperaturaEntrada):
     momento = normalizar_data_hora(dados.data_hora) or data_hora_atual()
     config = buscar_configuracoes()
+
     with closing(conectar_banco()) as conexao:
+        # Recupera a última leitura antes de inserir a nova. Isso também permite
+        # migrar com segurança o antigo alerta genérico temperatura_fora_faixa.
+        leitura_anterior = conexao.execute(
+            "SELECT temperatura FROM temperaturas ORDER BY data_hora DESC, id DESC LIMIT 1"
+        ).fetchone()
+
         cursor = conexao.execute(
             "INSERT INTO temperaturas (temperatura, data_hora) VALUES (?, ?)",
             (dados.temperatura, momento),
@@ -285,54 +292,111 @@ def registrar_temperatura(dados: TemperaturaEntrada):
         )
 
         if config and config["alerta_temperatura"]:
-            if dados.temperatura < config["temperatura_ligar"]:
-                chave = "temperatura_fora_faixa"
-                ativo = conexao.execute(
-                    "SELECT ativo FROM estado_alertas WHERE chave = ?", (chave,)
-                ).fetchone()
-                if not ativo or not ativo["ativo"]:
+            limite_minimo = config["temperatura_ligar"]
+            limite_maximo = config["temperatura_desligar"]
+
+            # Mantém um registro permanente para cada tipo de alerta.
+            # O banco continua com a mesma estrutura; não é necessária migração.
+            conexao.execute(
+                "INSERT OR IGNORE INTO estado_alertas (chave, ativo, atualizado_em) VALUES (?, 0, ?)",
+                ("temperatura_baixa", momento),
+            )
+            conexao.execute(
+                "INSERT OR IGNORE INTO estado_alertas (chave, ativo, atualizado_em) VALUES (?, 0, ?)",
+                ("temperatura_alta", momento),
+            )
+
+            estado_baixo = conexao.execute(
+                "SELECT ativo FROM estado_alertas WHERE chave = 'temperatura_baixa'"
+            ).fetchone()
+            estado_alto = conexao.execute(
+                "SELECT ativo FROM estado_alertas WHERE chave = 'temperatura_alta'"
+            ).fetchone()
+            estado_legado = conexao.execute(
+                "SELECT ativo FROM estado_alertas WHERE chave = 'temperatura_fora_faixa'"
+            ).fetchone()
+
+            baixo_ativo = bool(estado_baixo and estado_baixo["ativo"])
+            alto_ativo = bool(estado_alto and estado_alto["ativo"])
+            legado_ativo = bool(estado_legado and estado_legado["ativo"])
+
+            # Compatibilidade com bancos que ainda possuem o alerta genérico.
+            # A última temperatura anterior indica qual condição estava ativa.
+            if legado_ativo and not baixo_ativo and not alto_ativo and leitura_anterior:
+                temperatura_anterior = leitura_anterior["temperatura"]
+                if temperatura_anterior < limite_minimo:
+                    baixo_ativo = True
+                    conexao.execute(
+                        "UPDATE estado_alertas SET ativo = 1, atualizado_em = ? WHERE chave = 'temperatura_baixa'",
+                        (momento,),
+                    )
+                elif temperatura_anterior >= limite_maximo:
+                    alto_ativo = True
+                    conexao.execute(
+                        "UPDATE estado_alertas SET ativo = 1, atualizado_em = ? WHERE chave = 'temperatura_alta'",
+                        (momento,),
+                    )
+
+            # Classifica a leitura atual. A faixa intermediária é considerada normal.
+            if dados.temperatura < limite_minimo:
+                if not baixo_ativo:
                     registrar_evento(
                         "temperatura_baixa",
-                        f"Temperatura abaixo do limite de acionamento: {dados.temperatura:.2f} °C.",
-                        "aviso", conexao,
+                        f"Temperatura abaixo do limite mínimo: {dados.temperatura:.2f} °C.",
+                        "aviso",
+                        conexao,
                     )
+
+                # Garante exclusividade: baixa ativa e alta inativa.
                 conexao.execute(
-                    "INSERT INTO estado_alertas (chave, ativo, atualizado_em) VALUES (?, 1, ?) "
-                    "ON CONFLICT(chave) DO UPDATE SET ativo = 1, atualizado_em = excluded.atualizado_em",
-                    (chave, momento),
+                    "UPDATE estado_alertas SET ativo = CASE WHEN chave = 'temperatura_baixa' THEN 1 ELSE 0 END, atualizado_em = ? "
+                    "WHERE chave IN ('temperatura_baixa', 'temperatura_alta')",
+                    (momento,),
                 )
-            elif dados.temperatura >= config["temperatura_desligar"]:
-                chave = "temperatura_fora_faixa"
-                ativo = conexao.execute(
-                    "SELECT ativo FROM estado_alertas WHERE chave = ?", (chave,)
-                ).fetchone()
-                if not ativo or not ativo["ativo"]:
+
+            elif dados.temperatura >= limite_maximo:
+                if not alto_ativo:
                     registrar_evento(
                         "temperatura_alta",
-                        f"Temperatura atingiu ou ultrapassou o limite de desligamento: {dados.temperatura:.2f} °C.",
-                        "aviso", conexao,
+                        f"Temperatura atingiu ou ultrapassou o limite máximo: {dados.temperatura:.2f} °C.",
+                        "aviso",
+                        conexao,
                     )
+
+                # Se estava baixa, encerra baixa e ativa alta na mesma transação.
                 conexao.execute(
-                    "INSERT INTO estado_alertas (chave, ativo, atualizado_em) VALUES (?, 1, ?) "
-                    "ON CONFLICT(chave) DO UPDATE SET ativo = 1, atualizado_em = excluded.atualizado_em",
-                    (chave, momento),
+                    "UPDATE estado_alertas SET ativo = CASE WHEN chave = 'temperatura_alta' THEN 1 ELSE 0 END, atualizado_em = ? "
+                    "WHERE chave IN ('temperatura_baixa', 'temperatura_alta')",
+                    (momento,),
                 )
+
             else:
-                ativo = conexao.execute(
-                    "SELECT ativo FROM estado_alertas WHERE chave = 'temperatura_fora_faixa'"
-                ).fetchone()
-                if ativo and ativo["ativo"]:
+                # Ao voltar para a faixa normal, encerra qualquer alerta térmico ativo.
+                if baixo_ativo or alto_ativo or legado_ativo:
                     registrar_evento(
                         "temperatura_normalizada",
                         f"Temperatura retornou à faixa configurada: {dados.temperatura:.2f} °C.",
-                        "informacao", conexao,
+                        "informacao",
+                        conexao,
                     )
-                    conexao.execute(
-                        "UPDATE estado_alertas SET ativo = 0, atualizado_em = ? "
-                        "WHERE chave = 'temperatura_fora_faixa'", (momento,)
-                    )
+
+                conexao.execute(
+                    "UPDATE estado_alertas SET ativo = 0, atualizado_em = ? "
+                    "WHERE chave IN ('temperatura_baixa', 'temperatura_alta')",
+                    (momento,),
+                )
+
+            # Desativa a chave antiga para que ela não continue representando
+            # um estado genérico em paralelo com os dois estados específicos.
+            if estado_legado:
+                conexao.execute(
+                    "UPDATE estado_alertas SET ativo = 0, atualizado_em = ? WHERE chave = 'temperatura_fora_faixa'",
+                    (momento,),
+                )
+
         conexao.commit()
         novo_id = cursor.lastrowid
+
     return {
         "mensagem": "Temperatura registrada.",
         "id": novo_id,
