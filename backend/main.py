@@ -1,6 +1,7 @@
 """API do VA automações: monitoramento, configurações, eventos e comandos."""
 
-from contextlib import closing
+from contextlib import closing, asynccontextmanager
+import asyncio
 from datetime import datetime, timedelta
 from typing import Literal, Optional
 from zoneinfo import ZoneInfo
@@ -18,6 +19,28 @@ except ImportError:  # permite executar também com: cd backend && uvicorn main:
 FUSO_HORARIO = ZoneInfo("America/Sao_Paulo")
 TEMPO_LIMITE_CONEXAO_SEGUNDOS = 60
 
+_tarefa_alimentacao_automatica = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    inicializar_banco()
+    global _tarefa_alimentacao_automatica
+    _tarefa_alimentacao_automatica = asyncio.create_task(
+        verificar_agendamentos_alimentacao()
+    )
+    try:
+        yield
+    finally:
+        if _tarefa_alimentacao_automatica:
+            _tarefa_alimentacao_automatica.cancel()
+            try:
+                await _tarefa_alimentacao_automatica
+            except asyncio.CancelledError:
+                pass
+            _tarefa_alimentacao_automatica = None
+
+
 app = FastAPI(
     title="VA automações",
     description=(
@@ -25,6 +48,7 @@ app = FastAPI(
         "O ESP32 controla os componentes físicos; a API armazena e disponibiliza dados."
     ),
     version="2.0.0",
+    lifespan=lifespan,
 )
 
 # Durante o desenvolvimento, permite o acesso do frontend local.
@@ -36,11 +60,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def iniciar_aplicacao():
-    inicializar_banco()
 
 
 def agora() -> datetime:
@@ -717,6 +736,81 @@ def estatisticas_alimentacoes(dias: int = Query(30, ge=1, le=365)):
 
 
 # -----------------------------------------------------------------------------
+# ALIMENTAÇÃO AUTOMÁTICA PROGRAMADA
+# -----------------------------------------------------------------------------
+
+
+def criar_comando_alimentacao_automatica(horario: str, momento: datetime):
+    chave_execucao = f"automatica:{momento.strftime('%Y-%m-%d')}:{horario}"
+    config = buscar_configuracoes()
+
+    if not config or not config["automacao_alimentacao"]:
+        return None
+
+    with closing(conectar_banco()) as conexao:
+        alimentacao_existente = conexao.execute(
+            "SELECT id FROM alimentacoes WHERE chave_execucao = ?",
+            (chave_execucao,),
+        ).fetchone()
+        comando_existente = conexao.execute(
+            "SELECT id FROM comandos WHERE tipo = 'alimentacao_automatica' "
+            "AND parametros_json LIKE ?",
+            (f"%{chave_execucao}%",),
+        ).fetchone()
+
+        if alimentacao_existente or comando_existente:
+            return None
+
+        horario_programado = f"{momento.strftime('%Y-%m-%d')}T{horario}:00"
+        parametros = {
+            "angulo_servo": config["angulo_servo"],
+            "horario_programado": horario_programado,
+            "chave_execucao": chave_execucao,
+        }
+        criado = momento.isoformat(timespec="seconds")
+        expira = (momento + timedelta(minutes=10)).isoformat(timespec="seconds")
+
+        cursor = conexao.execute(
+            "INSERT INTO comandos (tipo, parametros_json, status, criado_em, expira_em) "
+            "VALUES (?, ?, 'pendente', ?, ?)",
+            (
+                "alimentacao_automatica",
+                json.dumps(parametros),
+                criado,
+                expira,
+            ),
+        )
+        registrar_evento(
+            "alimentacao_programada",
+            f"Alimentação automática programada para {horario}.",
+            "informacao",
+            conexao,
+        )
+        conexao.commit()
+        return cursor.lastrowid
+
+
+async def verificar_agendamentos_alimentacao():
+    while True:
+        try:
+            momento = agora()
+            config = buscar_configuracoes()
+
+            if config and config["automacao_alimentacao"]:
+                horarios = {
+                    config["horario_alimentacao_1"],
+                    config["horario_alimentacao_2"],
+                }
+                horario_atual = momento.strftime("%H:%M")
+                if horario_atual in horarios:
+                    criar_comando_alimentacao_automatica(horario_atual, momento)
+        except Exception as erro:
+            print(f"Erro no agendamento de alimentação automática: {erro}")
+
+        await asyncio.sleep(10)
+
+
+# -----------------------------------------------------------------------------
 # COMANDOS MANUAIS
 # -----------------------------------------------------------------------------
 
@@ -761,6 +855,38 @@ def criar_comando(dados: ComandoEntrada):
 def consultar_comandos_pendentes():
     momento = data_hora_atual()
     with closing(conectar_banco()) as conexao:
+        comandos_expirados = conexao.execute(
+            "SELECT id, parametros_json FROM comandos "
+            "WHERE status = 'pendente' AND expira_em < ? "
+            "AND tipo = 'alimentacao_automatica'",
+            (momento,),
+        ).fetchall()
+
+        for comando_expirado in comandos_expirados:
+            parametros = json.loads(comando_expirado["parametros_json"])
+            conexao.execute(
+                """INSERT OR IGNORE INTO alimentacoes
+                   (origem, horario_programado, data_hora, status,
+                    angulo_servo, chave_execucao, comando_id, observacao)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    "automatica",
+                    parametros.get("horario_programado"),
+                    momento,
+                    "nao_executada",
+                    parametros.get("angulo_servo"),
+                    parametros.get("chave_execucao"),
+                    comando_expirado["id"],
+                    "ESP32 não confirmou a execução dentro do prazo.",
+                ),
+            )
+            registrar_evento(
+                "alimentacao_nao_concluida",
+                "Alimentação automática não executada: comando expirado.",
+                "aviso",
+                conexao,
+            )
+
         conexao.execute(
             "UPDATE comandos SET status = 'expirado' WHERE status = 'pendente' AND expira_em < ?",
             (momento,),
@@ -787,7 +913,7 @@ def informar_resultado_comando(comando_id: int, dados: ResultadoComando):
     momento = data_hora_atual()
     with closing(conectar_banco()) as conexao:
         comando = conexao.execute(
-            "SELECT tipo, status FROM comandos WHERE id = ?", (comando_id,)
+            "SELECT tipo, status, parametros_json FROM comandos WHERE id = ?", (comando_id,)
         ).fetchone()
         if not comando:
             raise HTTPException(404, "Comando não encontrado.")
@@ -803,6 +929,40 @@ def informar_resultado_comando(comando_id: int, dados: ResultadoComando):
             "informacao" if dados.status == "executado" else "erro",
             conexao,
         )
+
+        if comando["tipo"] == "alimentacao_automatica":
+            parametros = json.loads(comando["parametros_json"])
+            status_alimentacao = (
+                "executada" if dados.status == "executado" else "falhou"
+            )
+            conexao.execute(
+                """INSERT OR IGNORE INTO alimentacoes
+                   (origem, horario_programado, data_hora, status,
+                    angulo_servo, chave_execucao, comando_id, observacao)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    "automatica",
+                    parametros.get("horario_programado"),
+                    momento,
+                    status_alimentacao,
+                    parametros.get("angulo_servo"),
+                    parametros.get("chave_execucao"),
+                    comando_id,
+                    dados.mensagem or (
+                        "Alimentação automática executada pelo ESP32."
+                        if dados.status == "executado"
+                        else "Falha na execução da alimentação automática."
+                    ),
+                ),
+            )
+            registrar_evento(
+                "alimentacao_executada" if dados.status == "executado"
+                else "alimentacao_nao_concluida",
+                f"Alimentação automática {status_alimentacao}.",
+                "informacao" if dados.status == "executado" else "aviso",
+                conexao,
+            )
+
         conexao.commit()
     return {"mensagem": "Resultado do comando registrado.", "comando_id": comando_id, "status": dados.status}
 

@@ -24,6 +24,88 @@ def conectar_banco() -> sqlite3.Connection:
     return conexao
 
 
+def migrar_tabela_comandos(conexao: sqlite3.Connection) -> None:
+    """Adiciona o tipo alimentacao_automatica aos comandos existentes."""
+
+    resultado = conexao.execute(
+        """
+        SELECT sql
+        FROM sqlite_master
+        WHERE type = 'table'
+          AND name = 'comandos'
+        """
+    ).fetchone()
+
+    if not resultado:
+        return
+
+    estrutura_atual = resultado["sql"]
+
+    if "alimentacao_automatica" in estrutura_atual:
+        return
+
+    conexao.execute(
+        """
+        CREATE TABLE comandos_nova (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipo TEXT NOT NULL CHECK (tipo IN (
+                'alimentacao_manual',
+                'alimentacao_automatica',
+                'aquecedor_ligar',
+                'aquecedor_desligar'
+            )),
+            parametros_json TEXT NOT NULL DEFAULT '{}',
+            status TEXT NOT NULL DEFAULT 'pendente'
+                CHECK (status IN (
+                    'pendente',
+                    'executado',
+                    'falhou',
+                    'expirado'
+                )),
+            criado_em TEXT NOT NULL,
+            expira_em TEXT,
+            executado_em TEXT,
+            mensagem_resultado TEXT
+        )
+        """
+    )
+
+    conexao.execute(
+        """
+        INSERT INTO comandos_nova (
+            id,
+            tipo,
+            parametros_json,
+            status,
+            criado_em,
+            expira_em,
+            executado_em,
+            mensagem_resultado
+        )
+        SELECT
+            id,
+            tipo,
+            parametros_json,
+            status,
+            criado_em,
+            expira_em,
+            executado_em,
+            mensagem_resultado
+        FROM comandos
+        """
+    )
+
+    conexao.execute("DROP TABLE comandos")
+    conexao.execute("ALTER TABLE comandos_nova RENAME TO comandos")
+
+    conexao.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_comandos_status
+        ON comandos(status, criado_em)
+        """
+    )
+
+
 def inicializar_banco() -> None:
     """Cria a estrutura atual do sistema. Pode ser executada mais de uma vez."""
 
@@ -53,7 +135,9 @@ def inicializar_banco() -> None:
 
             CREATE TABLE IF NOT EXISTS eventos_aquecedor (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                estado TEXT NOT NULL CHECK (estado IN ('ligado', 'desligado')),
+                estado TEXT NOT NULL CHECK (
+                    estado IN ('ligado', 'desligado')
+                ),
                 origem TEXT NOT NULL DEFAULT 'automatica'
                     CHECK (origem IN ('automatica', 'manual')),
                 temperatura REAL,
@@ -62,11 +146,17 @@ def inicializar_banco() -> None:
 
             CREATE TABLE IF NOT EXISTS alimentacoes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                origem TEXT NOT NULL CHECK (origem IN ('automatica', 'manual')),
+                origem TEXT NOT NULL CHECK (
+                    origem IN ('automatica', 'manual')
+                ),
                 horario_programado TEXT,
                 data_hora TEXT NOT NULL,
                 status TEXT NOT NULL CHECK (
-                    status IN ('executada', 'falhou', 'nao_executada')
+                    status IN (
+                        'executada',
+                        'falhou',
+                        'nao_executada'
+                    )
                 ),
                 angulo_servo INTEGER,
                 chave_execucao TEXT UNIQUE,
@@ -79,18 +169,37 @@ def inicializar_banco() -> None:
                 tipo TEXT NOT NULL,
                 descricao TEXT NOT NULL,
                 gravidade TEXT NOT NULL DEFAULT 'informacao'
-                    CHECK (gravidade IN ('informacao', 'aviso', 'erro', 'critico')),
+                    CHECK (
+                        gravidade IN (
+                            'informacao',
+                            'aviso',
+                            'erro',
+                            'critico'
+                        )
+                    ),
                 data_hora TEXT NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS comandos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tipo TEXT NOT NULL CHECK (tipo IN (
-                    'alimentacao_manual', 'aquecedor_ligar', 'aquecedor_desligar'
-                )),
+                tipo TEXT NOT NULL CHECK (
+                    tipo IN (
+                        'alimentacao_manual',
+                        'alimentacao_automatica',
+                        'aquecedor_ligar',
+                        'aquecedor_desligar'
+                    )
+                ),
                 parametros_json TEXT NOT NULL DEFAULT '{}',
                 status TEXT NOT NULL DEFAULT 'pendente'
-                    CHECK (status IN ('pendente', 'executado', 'falhou', 'expirado')),
+                    CHECK (
+                        status IN (
+                            'pendente',
+                            'executado',
+                            'falhou',
+                            'expirado'
+                        )
+                    ),
                 criado_em TEXT NOT NULL,
                 expira_em TEXT,
                 executado_em TEXT,
@@ -129,6 +238,10 @@ def inicializar_banco() -> None:
             DROP TABLE IF EXISTS medicoes_ph;
             """
         )
+
+        # Atualiza a estrutura da tabela comandos
+        # caso o banco já tenha sido criado anteriormente.
+        migrar_tabela_comandos(conexao)
 
         agora = datetime.now(
             ZoneInfo("America/Sao_Paulo")
