@@ -963,6 +963,39 @@ def informar_resultado_comando(comando_id: int, dados: ResultadoComando):
                 conexao,
             )
 
+        elif comando["tipo"] == "alimentacao_manual":
+            parametros = json.loads(comando["parametros_json"])
+            status_alimentacao = (
+                "executada" if dados.status == "executado" else "falhou"
+            )
+            conexao.execute(
+                """INSERT OR IGNORE INTO alimentacoes
+                   (origem, horario_programado, data_hora, status,
+                    angulo_servo, chave_execucao, comando_id, observacao)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    "manual",
+                    None,
+                    momento,
+                    status_alimentacao,
+                    parametros.get("angulo_servo"),
+                    f"manual:{comando_id}",
+                    comando_id,
+                    dados.mensagem or (
+                        "Alimentação manual executada pelo ESP32."
+                        if dados.status == "executado"
+                        else "Falha na execução da alimentação manual."
+                    ),
+                ),
+            )
+            registrar_evento(
+                "alimentacao_executada" if dados.status == "executado"
+                else "alimentacao_nao_concluida",
+                f"Alimentação manual {status_alimentacao}.",
+                "informacao" if dados.status == "executado" else "aviso",
+                conexao,
+            )
+
         conexao.commit()
     return {"mensagem": "Resultado do comando registrado.", "comando_id": comando_id, "status": dados.status}
 

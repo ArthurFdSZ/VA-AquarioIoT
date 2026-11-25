@@ -20,6 +20,10 @@
     --red: #b8483e;
     --green: #3f9a6b;
     --blue: #4b7fa8;
+    --mut-2: #6d6a63;      /* textos secundários dos gráficos */
+    --dot: #ffffff;        /* miolo dos pontos do gráfico */
+    --tick: #b9b5ab;       /* marcas menores da régua */
+    --today: #2f5d57;      /* barra de hoje (gráfico de alimentação): mesma cor da legenda "Automática" */
     --radius: 26px;
     --font: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
     --font-num: "Inter Display", "Inter", "Segoe UI Light", "Segoe UI", system-ui, sans-serif;
@@ -712,3 +716,98 @@ td.m { color: var(--mut); }
 .panel .ph .seg { padding: 3px; border-radius: 10px; }
 .panel .ph .seg button { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
 #tempModeBox { margin-left: auto; flex: none; }
+
+/* =========================================================
+   Botão de tema
+   ========================================================= */
+.theme-btn {
+    width: 38px; height: 38px;
+    border: 0; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--card);
+    color: var(--ink);
+    transition: background .15s ease, transform .15s ease;
+}
+.theme-btn:hover { background: var(--card-2); }
+.theme-btn:active { transform: scale(.95); }
+.theme-btn svg { width: 18px; height: 18px; grid-area: 1 / 1; }
+.theme-btn .i-sun { display: none; }
+:root[data-theme="dark"] .theme-btn .i-sun { display: block; }
+:root[data-theme="dark"] .theme-btn .i-moon { display: none; }
+
+/* =========================================================
+   Tema escuro (preto, azul e ciano) — ativado por data-theme="dark"
+   ========================================================= */
+:root { color-scheme: light; }
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0a0f1a;
+    --card: #131b2b;
+    --card-2: #1b2539;
+    --white: #0f1624;
+    --ink: #e8eef8;
+    --ink-2: #1b2539;
+    --mut: #8d9ab3;
+    --mut-dark: #8d9ab3;
+    --line: #26324a;
+    --acc: #22d3c5;
+    --acc-soft: #38bdf8;
+    --amb: #fbbf24;
+    --red: #f87171;
+    --green: #4ade80;
+    --blue: #7cb7ff;
+    --mut-2: #a9b5cc;
+    --dot: #131b2b;
+    --tick: #3a4863;
+    --today: #22d3c5;
+}
+:root[data-theme="dark"] .mark { background: var(--card-2); }
+:root[data-theme="dark"] .mark::after { background: var(--acc-soft); }
+:root[data-theme="dark"] .mark b { color: var(--ink); }
+:root[data-theme="dark"] .live i { box-shadow: 0 0 0 4px rgba(141, 154, 179, .18); }
+:root[data-theme="dark"] .live[data-state="ok"] i   { box-shadow: 0 0 0 4px rgba(34, 211, 197, .18); }
+:root[data-theme="dark"] .live[data-state="warn"] i { box-shadow: 0 0 0 4px rgba(251, 191, 36, .2); }
+:root[data-theme="dark"] .live[data-state="bad"] i  { box-shadow: 0 0 0 4px rgba(248, 113, 113, .2); }
+:root[data-theme="dark"] .card:hover { box-shadow: 0 14px 30px rgba(34, 211, 197, .12); }
+:root[data-theme="dark"] .card.heat { background: var(--card); color: var(--ink); }
+:root[data-theme="dark"] .card.heat .lbl,
+:root[data-theme="dark"] .card.heat .foot { color: var(--mut); }
+:root[data-theme="dark"] .card.heat .foot b { color: var(--ink); }
+:root[data-theme="dark"] .card.heat .go { background: var(--card-2); color: var(--mut); }
+:root[data-theme="dark"] .pulse i { background: #3a4863; }
+:root[data-theme="dark"] .pulse[data-on="true"] i {
+    background: var(--amb);
+    box-shadow: 0 0 0 6px rgba(251, 191, 36, .2), 0 0 0 14px rgba(251, 191, 36, .08);
+}
+:root[data-theme="dark"] .pulse[data-on="true"] i { animation-name: pulse-dark; }
+@keyframes pulse-dark {
+    50% { box-shadow: 0 0 0 8px rgba(251, 191, 36, .16), 0 0 0 18px rgba(251, 191, 36, .04); }
+}
+:root[data-theme="dark"] .tip { background: var(--white); color: var(--ink); }
+:root[data-theme="dark"] .tip span { color: var(--mut); }
+:root[data-theme="dark"] .evs::before { background: var(--line); }
+:root[data-theme="dark"] .e::before { --c: var(--line); }
+:root[data-theme="dark"] .e.heat::before { --c: var(--amb); }
+:root[data-theme="dark"] .e.feed::before { --c: var(--acc); }
+:root[data-theme="dark"] .e.warn::before { --c: var(--amb); }
+:root[data-theme="dark"] .e.bad::before  { --c: var(--red); }
+:root[data-theme="dark"] .settings { background: var(--white); color: var(--ink); }
+:root[data-theme="dark"] .in input { color: var(--ink); }
+:root[data-theme="dark"] .f.invalid .in { border-color: var(--red); }
+:root[data-theme="dark"] .err { color: #fca5a5; }
+:root[data-theme="dark"] .slider { background: var(--line); }
+:root[data-theme="dark"] .slider b { background: var(--ink); }
+:root[data-theme="dark"] .hint { color: var(--mut); }
+:root[data-theme="dark"] .btn.save { background: var(--acc); color: #000000; }
+:root[data-theme="dark"] .btn.manual { background: var(--acc-soft); color: #04121a; }
+:root[data-theme="dark"] .btn.ghost { color: var(--ink); }
+:root[data-theme="dark"] .msg.error { color: #fca5a5; }
+:root[data-theme="dark"] .steps { color: var(--mut); }
+:root[data-theme="dark"] .steps span::before { background: #3a4863; }
+:root[data-theme="dark"] .steps .d { color: var(--ink); }
+:root[data-theme="dark"] .steps .w::before { box-shadow: 0 0 0 4px rgba(251, 191, 36, .22); }
+:root[data-theme="dark"] .steps .x { color: #fca5a5; }
+:root[data-theme="dark"] .steps .x::before { background: var(--red); }
+:root[data-theme="dark"] dialog.modal::backdrop { background: rgba(0, 0, 0, .72); }
+:root[data-theme="dark"] .seg button.on { background: var(--acc); color: #000000; }

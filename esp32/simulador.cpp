@@ -1,388 +1,639 @@
+#include <WiFi.h>
 #include <HTTPClient.h>
+#include <ESP32Servo.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <ESP32Servo.h>
 #include <ArduinoJson.h>
 
-// ==========================================
-// 1. CONFIGURACOES DO WIFI
-// ==========================================
+// =====================================
+// CONEXAO WIFI E FASTAPI
+// =====================================
 
-const char* ssid = "NOME_DO_WIFI";
-const char* password = "SENHA_DO_WIFI";
+const char* SSID = "Picles";
+const char* SENHA = "pao12345";
 
-// ==========================================
-// 2. ENDERECO DO BACKEND FASTAPI
-// ==========================================
+const char* API_BASE = "http://172.20.10.11:8000";
 
-// Trocar pelo IP real do computador.
+// =====================================
+// PINOS
+// =====================================
 
-const char* servidor =
-  "http://192.168.0.105:8000";
-
-// ==========================================
-// 3. PINOS
-// ==========================================
-
-#define PINO_SENSOR 4
 #define PINO_SERVO 18
-#define PINO_RELE 26
+#define PINO_SENSOR 4
 
-// Muitos modulos de rele sao ativos em LOW.
-// CONFIRMEM no modelo de voces antes de usar.
-const bool RELE_ATIVO_EM_LOW = true;
+#define PINO_RELE1 22
+#define PINO_RELE2 23
 
-// ==========================================
-// 4. INTERVALOS
-// ==========================================
+// Mantidos conforme o codigo original.
+const uint8_t RELE_LIGADO = HIGH;
+const uint8_t RELE_DESLIGADO = LOW;
 
-const unsigned long INTERVALO_TEMPERATURA = 5000;
-const unsigned long INTERVALO_COMANDOS = 2000;
-const unsigned long TIMEOUT_BACKEND = 15000;
+// =====================================
+// CONTROLE DE TEMPERATURA
+// =====================================
 
-// ==========================================
-// 5. OBJETOS
-// ==========================================
+const float TEMPERATURA_MINIMA = 24.5f;
+const float TEMPERATURA_MAXIMA = 27.0f;
+
+const unsigned long INTERVALO_LEITURA = 2000;
+
+// =====================================
+// COMUNICACAO HTTP
+// =====================================
+
+const unsigned long INTERVALO_HTTP = 10000;
+const unsigned long INTERVALO_RECONEXAO = 10000;
+
+// =====================================
+// SERVO MOTOR
+// =====================================
+
+const int ANGULO_INICIAL = 0;
+const int ANGULO_PADRAO = 90;
+
+const unsigned long TEMPO_MOVIMENTO_SERVO = 3000;
+
+// =====================================
+// OBJETOS
+// =====================================
 
 OneWire oneWire(PINO_SENSOR);
 DallasTemperature sensor(&oneWire);
 
-Servo alimentador;
+Servo servo;
 
-// ==========================================
-// 6. VARIAVEIS
-// ==========================================
+// =====================================
+// VARIAVEIS
+// =====================================
 
-unsigned long ultimoEnvioTemperatura = 0;
-unsigned long ultimaConsultaComandos = 0;
-unsigned long ultimoContatoBackend = 0;
+unsigned long ultimaLeitura = 0;
+unsigned long ultimaComunicacao = 0;
+unsigned long ultimaTentativaWiFi = 0;
 
+float ultimaTemperatura = 0;
+
+bool temperaturaValida = false;
 bool aquecedorLigado = false;
-bool servoEmMovimento = false;
 
-unsigned long inicioMovimentoServo = 0;
+// Evita repetir o ultimo comando durante
+// a mesma inicializacao do ESP32.
+// Nao protege contra reinicializacoes.
+int ultimoComandoAlimentacaoExecutado = -1;
 
-// Estados do alimentador
-int estadoServo = 0;
+// =====================================
+// CONTROLE DO AQUECEDOR
+// =====================================
 
-// ==========================================
-// 7. CONTROLE DO RELE
-// ==========================================
+void atualizarAquecedor(bool ligado) {
 
-void controlarAquecedor(bool ligar) {
+  aquecedorLigado = ligado;
 
-  aquecedorLigado = ligar;
+  digitalWrite(
+    PINO_RELE1,
+    ligado ? RELE_LIGADO : RELE_DESLIGADO
+  );
 
-  if (RELE_ATIVO_EM_LOW) {
-    digitalWrite(PINO_RELE, ligar ? LOW : HIGH);
-  } else {
-    digitalWrite(PINO_RELE, ligar ? HIGH : LOW);
-  }
-
-  Serial.println(
-    ligar ? "Aquecedor LIGADO" : "Aquecedor DESLIGADO"
+  digitalWrite(
+    PINO_RELE2,
+    ligado ? RELE_LIGADO : RELE_DESLIGADO
   );
 }
 
-// ==========================================
-// 8. LEITURA DA TEMPERATURA
-// ==========================================
+// =====================================
+// LEITURA DE TEMPERATURA
+// =====================================
 
-float lerTemperatura() {
+void lerTemperatura() {
 
   sensor.requestTemperatures();
 
-  float temperatura = sensor.getTempCByIndex(0);
+  float valor = sensor.getTempCByIndex(0);
 
-  if (temperatura == DEVICE_DISCONNECTED_C) {
-    Serial.println("ERRO: Sensor desconectado!");
-    return -999;
-  }
+  temperaturaValida =
+    valor != DEVICE_DISCONNECTED_C &&
+    valor >= -55.0f &&
+    valor <= 125.0f;
 
-  if (temperatura < -10 || temperatura > 50) {
-    Serial.println("ERRO: Leitura fora da faixa esperada!");
-    return -999;
-  }
+  if (!temperaturaValida) {
 
-  return temperatura;
-}
+    atualizarAquecedor(false);
 
-// ==========================================
-// 9. ENVIO DA TEMPERATURA
-// ==========================================
+    Serial.println("--------------------------");
+    Serial.println("ERRO: SENSOR DESCONECTADO!");
+    Serial.println("AQUECEDOR DESLIGADO POR SEGURANCA!");
 
-void enviarTemperatura() {
-
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("Wi-Fi desconectado!");
     return;
   }
 
-  float temperatura = lerTemperatura();
+  ultimaTemperatura = valor;
 
-  if (temperatura == -999) {
+  // MESMA LOGICA DO CODIGO ORIGINAL
 
-    // Leitura invalida: aquecedor desligado
-    controlarAquecedor(false);
-    return;
+  if (valor <= TEMPERATURA_MINIMA) {
+
+    atualizarAquecedor(true);
+
+  } else if (valor >= TEMPERATURA_MAXIMA) {
+
+    atualizarAquecedor(false);
   }
 
-  HTTPClient http;
+  Serial.println("--------------------------");
 
-  http.begin(
-    String(servidor) + "/api/temperatura"
-  );
+  Serial.print("Temperatura da agua: ");
+  Serial.print(valor);
+  Serial.println(" C");
 
-  http.addHeader(
-    "Content-Type",
-    "application/json"
-  );
+  if (aquecedorLigado) {
 
-  String json = "{\"temperatura\":";
-  json += String(temperatura, 2);
-  json += "}";
-
-  int resposta = http.POST(json);
-
-  Serial.print("Temperatura: ");
-  Serial.println(temperatura);
-
-  Serial.print("Resposta HTTP: ");
-  Serial.println(resposta);
-
-  http.end();
-}
-
-// ==========================================
-// 10. ALIMENTADOR
-// ==========================================
-
-void iniciarAlimentacao() {
-
-  if (servoEmMovimento) {
-    Serial.println("Alimentador ja esta funcionando!");
-    return;
-  }
-
-  Serial.println("Iniciando alimentacao...");
-
-  servoEmMovimento = true;
-  estadoServo = 1;
-
-  inicioMovimentoServo = millis();
-
-  alimentador.attach(PINO_SERVO);
-
-  alimentador.write(90);
-}
-
-// Executa o movimento sem usar delays longos
-void atualizarAlimentador() {
-
-  if (!servoEmMovimento) {
-    return;
-  }
-
-  unsigned long agora = millis();
-
-  // Aguarda o movimento de ida
-  if (estadoServo == 1 &&
-      agora - inicioMovimentoServo >= 700) {
-
-    alimentador.write(0);
-
-    estadoServo = 2;
-    inicioMovimentoServo = agora;
-  }
-
-  // Aguarda o retorno
-  else if (estadoServo == 2 &&
-           agora - inicioMovimentoServo >= 700) {
-
-    alimentador.detach();
-
-    servoEmMovimento = false;
-    estadoServo = 0;
-
-    Serial.println("Alimentacao concluida!");
-  }
-}
-
-// ==========================================
-// 11. CONFIRMAR ALIMENTACAO NO BACKEND
-// ==========================================
-
-void confirmarAlimentacao() {
-
-  HTTPClient http;
-
-  http.begin(
-    String(servidor) +
-    "/api/comandos/alimentacao/concluir"
-  );
-
-  http.addHeader(
-    "Content-Type",
-    "application/json"
-  );
-
-  int resposta = http.POST("{}");
-
-  Serial.print("Confirmacao alimentacao: ");
-  Serial.println(resposta);
-
-  http.end();
-}
-
-// ==========================================
-// 12. CONSULTAR COMANDOS DO BACKEND
-// ==========================================
-
-void consultarComandos() {
-
-  if (WiFi.status() != WL_CONNECTED) {
-    return;
-  }
-
-  HTTPClient http;
-
-  http.begin(
-    String(servidor) + "/api/comandos"
-  );
-
-  int resposta = http.GET();
-
-  if (resposta == 200) {
-
-    String retorno = http.getString();
-
-    StaticJsonDocument<256> documento;
-
-    DeserializationError erro =
-      deserializeJson(documento, retorno);
-
-    if (!erro) {
-
-      ultimoContatoBackend = millis();
-
-      bool comandoAquecedor =
-        documento["aquecedor"] | false;
-
-      bool comandoAlimentar =
-        documento["alimentar"] | false;
-
-      // Controle do aquecedor
-      controlarAquecedor(comandoAquecedor);
-
-      // Executar alimentacao somente se estiver livre
-      if (comandoAlimentar && !servoEmMovimento) {
-
-        iniciarAlimentacao();
-
-        confirmarAlimentacao();
-      }
-
-    } else {
-
-      Serial.println("Erro ao interpretar JSON!");
-    }
+    Serial.println("AQUECEDOR: LIGADO");
 
   } else {
 
-    Serial.print("Erro ao consultar comandos: ");
-    Serial.println(resposta);
+    Serial.println("AQUECEDOR: DESLIGADO");
+  }
+}
+
+// =====================================
+// CONEXAO WIFI
+// =====================================
+
+void conectarWiFi() {
+
+  Serial.println();
+  Serial.println("==========================");
+  Serial.println("INICIANDO CONEXAO WIFI");
+  Serial.println("==========================");
+
+  WiFi.mode(WIFI_STA);
+
+  WiFi.begin(SSID, SENHA);
+
+  Serial.println("Tentativa de conexao iniciada.");
+  Serial.println("Aguardando conexao em segundo plano...");
+}
+
+// =====================================
+// MONITORAMENTO WIFI
+// =====================================
+
+void verificarWiFi() {
+
+  static bool estavaConectado = false;
+
+  bool conectado = WiFi.status() == WL_CONNECTED;
+
+  if (conectado && !estavaConectado) {
+
+    Serial.println();
+    Serial.println("==========================");
+    Serial.println("WIFI CONECTADO!");
+    Serial.println("==========================");
+
+    Serial.print("REDE: ");
+    Serial.println(SSID);
+
+    Serial.print("IP DO ESP32: ");
+    Serial.println(WiFi.localIP());
+
+    Serial.print("SINAL WIFI: ");
+    Serial.print(WiFi.RSSI());
+    Serial.println(" dBm");
+
+    Serial.print("ENDERECO FASTAPI: ");
+    Serial.println(API_BASE);
+  }
+
+  if (!conectado && estavaConectado) {
+
+    Serial.println();
+    Serial.println("WIFI DESCONECTADO!");
+  }
+
+  estavaConectado = conectado;
+}
+
+// =====================================
+// INICIAR REQUISICAO HTTP
+// =====================================
+
+bool iniciarHttp(HTTPClient& http, const String& rota) {
+
+  if (WiFi.status() != WL_CONNECTED) {
+
+    Serial.println("HTTP cancelado: Wi-Fi desconectado.");
+
+    return false;
+  }
+
+  http.setTimeout(2500);
+
+  String url = String(API_BASE) + rota;
+
+  if (!http.begin(url)) {
+
+    Serial.print("Erro ao iniciar HTTP: ");
+    Serial.println(url);
+
+    return false;
+  }
+
+  return true;
+}
+
+// =====================================
+// ENVIAR TEMPERATURA
+// =====================================
+
+void enviarTemperatura() {
+
+  if (!temperaturaValida) {
+
+    Serial.println("Temperatura invalida: envio ignorado.");
+
+    return;
+  }
+
+  HTTPClient http;
+
+  if (!iniciarHttp(http, "/temperaturas")) {
+    return;
+  }
+
+  http.addHeader("Content-Type", "application/json");
+
+  JsonDocument doc;
+
+  doc["temperatura"] = ultimaTemperatura;
+
+  String payload;
+
+  serializeJson(doc, payload);
+
+  int status = http.POST(payload);
+
+  Serial.print("POST /temperaturas: ");
+  Serial.println(status);
+
+  if (status < 0) {
+
+    Serial.print("Erro HTTP: ");
+    Serial.println(http.errorToString(status));
   }
 
   http.end();
 }
 
-// ==========================================
-// 13. CONEXAO WIFI
-// ==========================================
+// =====================================
+// ENVIAR HEARTBEAT
+// =====================================
 
-void conectarWiFi() {
+void enviarHeartbeat() {
 
-  WiFi.begin(ssid, password);
+  HTTPClient http;
 
-  Serial.print("Conectando ao Wi-Fi");
-
-  while (WiFi.status() != WL_CONNECTED) {
-
-    delay(500);
-    Serial.print(".");
+  if (!iniciarHttp(http, "/dispositivo/heartbeat")) {
+    return;
   }
 
-  Serial.println();
-  Serial.println("Wi-Fi conectado!");
+  http.addHeader("Content-Type", "application/json");
 
-  Serial.print("IP do ESP32: ");
-  Serial.println(WiFi.localIP());
+  int status = http.POST("{}");
+
+  Serial.print("POST /dispositivo/heartbeat: ");
+  Serial.println(status);
+
+  if (status < 0) {
+
+    Serial.print("Erro HTTP: ");
+    Serial.println(http.errorToString(status));
+  }
+
+  http.end();
 }
 
-// ==========================================
-// 14. SETUP
-// ==========================================
+// =====================================
+// CONFIRMAR COMANDO
+// =====================================
+
+bool confirmarComando(
+  int id,
+  bool sucesso,
+  const char* mensagem
+) {
+
+  HTTPClient http;
+
+  String rota =
+    "/dispositivo/comandos/" +
+    String(id) +
+    "/resultado";
+
+  if (!iniciarHttp(http, rota)) {
+    return false;
+  }
+
+  http.addHeader("Content-Type", "application/json");
+
+  JsonDocument doc;
+
+  doc["status"] = sucesso ? "executado" : "falhou";
+  doc["mensagem"] = mensagem;
+
+  String payload;
+
+  serializeJson(doc, payload);
+
+  int status = http.sendRequest("PUT", payload);
+
+  Serial.print("PUT resultado comando ");
+  Serial.print(id);
+  Serial.print(": ");
+  Serial.println(status);
+
+  http.end();
+
+  return status >= 200 && status < 300;
+}
+
+// =====================================
+// EXECUTAR ALIMENTACAO
+// =====================================
+
+void executarAlimentacao(int angulo) {
+
+  angulo = constrain(angulo, 0, 180);
+
+  Serial.println("==========================");
+  Serial.println("INICIANDO ALIMENTACAO");
+  Serial.println("==========================");
+
+  Serial.print("Movendo servo para ");
+  Serial.print(angulo);
+  Serial.println(" graus.");
+
+  servo.write(angulo);
+
+  delay(TEMPO_MOVIMENTO_SERVO);
+
+  servo.write(ANGULO_INICIAL);
+
+  delay(TEMPO_MOVIMENTO_SERVO);
+
+  Serial.println("Servo retornou para 0 graus.");
+  Serial.println("ALIMENTACAO FINALIZADA!");
+}
+
+// =====================================
+// CONSULTAR COMANDOS DO FASTAPI
+// =====================================
+
+void consultarComandos() {
+
+  HTTPClient http;
+
+  if (!iniciarHttp(
+    http,
+    "/dispositivo/comandos/pendentes"
+  )) {
+    return;
+  }
+
+  int status = http.GET();
+
+  if (status != 200) {
+
+    Serial.print("GET comandos: ");
+    Serial.println(status);
+
+    http.end();
+
+    return;
+  }
+
+  String resposta = http.getString();
+
+  http.end();
+
+  JsonDocument doc;
+
+  DeserializationError erro =
+    deserializeJson(doc, resposta);
+
+  if (erro) {
+
+    Serial.println("ERRO: JSON de comandos invalido.");
+
+    return;
+  }
+
+  JsonArray comandos = doc["comandos"].as<JsonArray>();
+
+  for (JsonObject comando : comandos) {
+
+    int id = comando["id"] | -1;
+
+    String tipo = comando["tipo"] | "";
+
+    if (id < 0) {
+      continue;
+    }
+
+    // =====================================
+    // ALIMENTACAO MANUAL E AUTOMATICA
+    // =====================================
+
+    if (
+      tipo == "alimentacao_manual" ||
+      tipo == "alimentacao_automatica"
+    ) {
+
+      // Evita repetir o ultimo comando
+      // durante esta inicializacao.
+
+      if (id == ultimoComandoAlimentacaoExecutado) {
+
+        confirmarComando(
+          id,
+          true,
+          "Comando ja executado"
+        );
+
+        continue;
+      }
+
+      int angulo =
+        comando["parametros"]["angulo_servo"] |
+        ANGULO_PADRAO;
+
+      if (tipo == "alimentacao_automatica") {
+
+        Serial.println("==========================");
+        Serial.println("ALIMENTACAO AUTOMATICA");
+        Serial.println("==========================");
+
+      } else {
+
+        Serial.println("==========================");
+        Serial.println("ALIMENTACAO MANUAL");
+        Serial.println("==========================");
+      }
+
+      executarAlimentacao(angulo);
+
+      ultimoComandoAlimentacaoExecutado = id;
+
+      confirmarComando(
+        id,
+        true,
+        "Servo acionado"
+      );
+
+    } else {
+
+      // Comandos manuais do aquecedor
+      // nao sao executados nesta versao.
+
+      confirmarComando(
+        id,
+        false,
+        "Tipo de comando nao suportado"
+      );
+    }
+  }
+}
+
+// =====================================
+// SETUP
+// =====================================
 
 void setup() {
 
   Serial.begin(115200);
 
-  pinMode(PINO_RELE, OUTPUT);
+  delay(1000);
 
-  // Comecar sempre com aquecedor desligado
-  controlarAquecedor(false);
+  Serial.println();
+  Serial.println("==========================");
+  Serial.println("AQUARIO AUTOMATIZADO");
+  Serial.println("INICIANDO SISTEMA...");
+  Serial.println("==========================");
+
+  // INICIA RELES
+
+  pinMode(PINO_RELE1, OUTPUT);
+  pinMode(PINO_RELE2, OUTPUT);
+
+  // AQUECEDOR INICIA DESLIGADO
+
+  atualizarAquecedor(false);
+
+  // INICIA SENSOR
 
   sensor.begin();
+  sensor.setResolution(10);
+
+  // INICIA SERVO
+
+  servo.setPeriodHertz(50);
+
+  servo.attach(PINO_SERVO, 500, 2400);
+
+  servo.write(ANGULO_INICIAL);
+
+  Serial.println("Sensor inicializado.");
+  Serial.println("Servo inicializado.");
+  Serial.println("Reles inicializados.");
+
+  // INICIA WIFI
 
   conectarWiFi();
 
-  alimentador.setPeriodHertz(50);
+  // CONFIGURA TEMPORIZADORES
+
+  ultimaLeitura = millis() - INTERVALO_LEITURA;
+
+  ultimaComunicacao = millis() - INTERVALO_HTTP;
+
+  ultimaTentativaWiFi = millis();
+
+  Serial.println();
+  Serial.println("SETUP FINALIZADO!");
+  Serial.println("==========================");
 }
 
-// ==========================================
-// 15. LOOP PRINCIPAL
-// ==========================================
+// =====================================
+// LOOP PRINCIPAL
+// =====================================
 
 void loop() {
 
   unsigned long agora = millis();
 
-  // Verificar Wi-Fi
-  if (WiFi.status() != WL_CONNECTED) {
+  // =====================================
+  // MONITORA WIFI
+  // =====================================
 
-    controlarAquecedor(false);
+  verificarWiFi();
+
+  // =====================================
+  // LE TEMPERATURA
+  // =====================================
+
+  if (
+    agora - ultimaLeitura >= INTERVALO_LEITURA
+  ) {
+
+    ultimaLeitura = agora;
+
+    lerTemperatura();
+  }
+
+  // =====================================
+  // TENTA RECONECTAR AO WIFI
+  // =====================================
+
+  if (
+    WiFi.status() != WL_CONNECTED &&
+    agora - ultimaTentativaWiFi >= INTERVALO_RECONEXAO
+  ) {
+
+    ultimaTentativaWiFi = agora;
+
+    Serial.println();
+    Serial.println("Wi-Fi indisponivel!");
+    Serial.println("Tentando reconectar...");
 
     WiFi.reconnect();
   }
 
-  // Enviar temperatura
-  if (WiFi.status() == WL_CONNECTED &&
-      agora - ultimoEnvioTemperatura >=
-      INTERVALO_TEMPERATURA) {
+  // =====================================
+  // COMUNICACAO COM FASTAPI
+  // =====================================
 
-    ultimoEnvioTemperatura = agora;
+  if (
+    agora - ultimaComunicacao >= INTERVALO_HTTP
+  ) {
 
-    enviarTemperatura();
+    ultimaComunicacao = agora;
+
+    if (WiFi.status() == WL_CONNECTED) {
+
+      Serial.println();
+      Serial.println("Comunicando com FastAPI...");
+
+      enviarTemperatura();
+
+      enviarHeartbeat();
+
+      consultarComandos();
+
+    } else {
+
+      Serial.println(
+        "Wi-Fi desconectado. "
+        "Controle termico local continua."
+      );
+    }
   }
-
-  // Consultar comandos
-  if (WiFi.status() == WL_CONNECTED &&
-      agora - ultimaConsultaComandos >=
-      INTERVALO_COMANDOS) {
-
-    ultimaConsultaComandos = agora;
-
-    consultarComandos();
-  }
-
-  // Protecao: perder comunicacao com backend
-  if (ultimoContatoBackend == 0 ||
-      agora - ultimoContatoBackend >
-      TIMEOUT_BACKEND) {
-
-    controlarAquecedor(false);
-  }
-
-  // Atualizar movimento do servo
-  atualizarAlimentador();
 }

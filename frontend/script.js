@@ -301,30 +301,30 @@
             : sx(p.t));
 
         let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de temperatura">`;
-        svg += `<defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f5d57" stop-opacity=".18"/><stop offset="1" stop-color="#2f5d57" stop-opacity="0"/></linearGradient></defs>`;
+        svg += `<defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--acc)" stop-opacity=".18"/><stop offset="1" stop-color="var(--acc)" stop-opacity="0"/></linearGradient></defs>`;
 
         if (o.band) {
             const yTop = sy(Math.min(o.band[1], y1)), yBot = sy(Math.max(o.band[0], y0));
-            svg += `<rect x="${L}" y="${yTop.toFixed(1)}" width="${pw}" height="${Math.max(0, yBot - yTop).toFixed(1)}" rx="6" fill="#2f5d57" opacity=".07"/>`;
+            svg += `<rect x="${L}" y="${yTop.toFixed(1)}" width="${pw}" height="${Math.max(0, yBot - yTop).toFixed(1)}" rx="6" fill="var(--acc)" opacity=".07"/>`;
         }
 
         for (let v = y0; v <= y1 + step / 2; v += step) {
             const y = sy(v);
-            svg += `<line x1="${L}" x2="${W - R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#e1ddd4"/>`;
-            svg += `<text x="${L - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11.5" fill="#8d8a82">${nf1.format(v).replace(",0", "")}°</text>`;
+            svg += `<line x1="${L}" x2="${W - R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--line)"/>`;
+            svg += `<text x="${L - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11.5" fill="var(--mut)">${nf1.format(v).replace(",0", "")}°</text>`;
         }
 
         // ----- eixo X
         if (!seq) {
             xTicks(t0, t1).forEach((tick) => {
-                svg += `<text x="${sx(tick.t).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="11.5" fill="#8d8a82">${tick.label}</text>`;
+                svg += `<text x="${sx(tick.t).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="11.5" fill="var(--mut)">${tick.label}</text>`;
             });
         } else {
             const k = Math.min(n, Math.max(2, Math.floor(pw / 62)));
             const shown = new Set();
             for (let j = 0; j < k; j++) shown.add(k === 1 ? 0 : Math.round(j * (n - 1) / (k - 1)));
             shown.forEach((i) => {
-                svg += `<text x="${xs[i].toFixed(1)}" y="${H - 22}" text-anchor="middle" font-size="11.5" fill="#8d8a82">${fmtHM.format(pts[i].t)}</text>`;
+                svg += `<text x="${xs[i].toFixed(1)}" y="${H - 22}" text-anchor="middle" font-size="11.5" fill="var(--mut)">${fmtHM.format(pts[i].t)}</text>`;
             });
             const today = dayKey(Date.now()), yest = dayKey(Date.now() - DAY);
             let s0 = 0;
@@ -333,10 +333,10 @@
                 const key = dayKey(pts[s0].t);
                 const label = key === today ? "hoje" : key === yest ? "ontem" : fmtDM.format(pts[s0].t);
                 const cx = clamp((xs[s0] + xs[i - 1]) / 2, L + 14, W - R - 14);
-                svg += `<text x="${cx.toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="11" font-weight="600" fill="#6d6a63">${label}</text>`;
+                svg += `<text x="${cx.toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--mut-2)">${label}</text>`;
                 if (i < n) {
                     const sepX = ((xs[i - 1] + xs[i]) / 2).toFixed(1);
-                    svg += `<line x1="${sepX}" x2="${sepX}" y1="${T}" y2="${T + ph + 6}" stroke="#8d8a82" stroke-opacity=".55" stroke-dasharray="3 4"/>`;
+                    svg += `<line x1="${sepX}" x2="${sepX}" y1="${T}" y2="${T + ph + 6}" stroke="var(--mut)" stroke-opacity=".55" stroke-dasharray="3 4"/>`;
                 }
                 s0 = i;
             }
@@ -346,17 +346,17 @@
             o.segments.forEach((sg) => {
                 const a = Math.max(sg.a, t0), b = Math.min(sg.b, t1);
                 if (b <= a) return;
-                svg += `<rect x="${sx(a).toFixed(1)}" y="${H - B + 7}" width="${Math.max(2, sx(b) - sx(a)).toFixed(1)}" height="4" rx="2" fill="#c9773c"/>`;
+                svg += `<rect x="${sx(a).toFixed(1)}" y="${H - B + 7}" width="${Math.max(2, sx(b) - sx(a)).toFixed(1)}" height="4" rx="2" fill="var(--amb)"/>`;
             });
         }
 
-        const dot = (x, y, r) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="#fff" stroke="#2f5d57" stroke-width="2.2"/>`;
+        const dot = (x, y, r) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="var(--dot)" stroke="var(--acc)" stroke-width="2.2"/>`;
         let last = null;
 
         if (seq) {
             // uma leitura = um ponto, igualmente espaçado; valores escritos quando cabem
             if (n > 1) {
-                svg += `<path d="${pts.map((p, i) => `${i ? "L" : "M"}${xs[i].toFixed(1)} ${sy(p.v).toFixed(1)}`).join(" ")}" fill="none" stroke="#2f5d57" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+                svg += `<path d="${pts.map((p, i) => `${i ? "L" : "M"}${xs[i].toFixed(1)} ${sy(p.v).toFixed(1)}`).join(" ")}" fill="none" stroke="var(--acc)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
             }
             const dense = n > 60;
             const labelled = n <= Math.floor(pw / 40);
@@ -364,7 +364,7 @@
                 if (!dense) svg += dot(xs[i], sy(p.v), 4);
                 if (labelled) {
                     const above = sy(p.v) - T > 20;
-                    svg += `<text x="${xs[i].toFixed(1)}" y="${(sy(p.v) + (above ? -11 : 19)).toFixed(1)}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#1d2321" style="paint-order:stroke;stroke:var(--card);stroke-width:3px">${fmt1(p.v)}</text>`;
+                    svg += `<text x="${xs[i].toFixed(1)}" y="${(sy(p.v) + (above ? -11 : 19)).toFixed(1)}" text-anchor="middle" font-size="11.5" font-weight="600" fill="var(--ink)" style="paint-order:stroke;stroke:var(--card);stroke-width:3px">${fmt1(p.v)}</text>`;
                 }
             });
             last = { x: xs[n - 1], y: sy(pts[n - 1].v) };
@@ -379,14 +379,14 @@
                 if (!red.length) return;
                 const first = { x: sx(red[0].t), y: sy(red[0].v) };
                 // intervalo sem leituras: pontilhado ligando o trecho anterior a este
-                if (prev) svg += `<path d="M${prev.x.toFixed(1)} ${prev.y.toFixed(1)} L${first.x.toFixed(1)} ${first.y.toFixed(1)}" fill="none" stroke="#2f5d57" stroke-opacity=".5" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"/>`;
+                if (prev) svg += `<path d="M${prev.x.toFixed(1)} ${prev.y.toFixed(1)} L${first.x.toFixed(1)} ${first.y.toFixed(1)}" fill="none" stroke="var(--acc)" stroke-opacity=".5" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"/>`;
                 if (red.length > 1) {
                     const path = red.map((p, i) => `${i ? "L" : "M"}${sx(p.t).toFixed(1)} ${sy(p.v).toFixed(1)}`).join(" ");
                     const tail = red[red.length - 1];
                     if (dense) svg += `<path d="${path} L${sx(tail.t).toFixed(1)} ${T + ph} L${first.x.toFixed(1)} ${T + ph} Z" fill="url(#areaGrad)"/>`;
-                    svg += `<path d="${path}" fill="none" stroke="#2f5d57" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+                    svg += `<path d="${path}" fill="none" stroke="var(--acc)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
                 } else if (dense) {
-                    svg += `<circle cx="${first.x.toFixed(1)}" cy="${first.y.toFixed(1)}" r="2.5" fill="#2f5d57"/>`;
+                    svg += `<circle cx="${first.x.toFixed(1)}" cy="${first.y.toFixed(1)}" r="2.5" fill="var(--acc)"/>`;
                 }
                 const tl = red[red.length - 1];
                 prev = { x: sx(tl.t), y: sy(tl.v) };
@@ -396,11 +396,11 @@
         }
 
         if (last && o.showLast !== false) {
-            svg += `<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="9" fill="#2f5d57" opacity=".15"/><circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="4.5" fill="#2f5d57"/>`;
+            svg += `<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="9" fill="var(--acc)" opacity=".15"/><circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="4.5" fill="var(--acc)"/>`;
         }
 
-        svg += `<line id="guide" x1="0" x2="0" y1="${T}" y2="${T + ph}" stroke="#1d2321" stroke-opacity=".25" stroke-dasharray="3 3" visibility="hidden"/>`;
-        svg += `<circle id="guideDot" r="5" fill="#fff" stroke="#2f5d57" stroke-width="2.5" visibility="hidden"/>`;
+        svg += `<line id="guide" x1="0" x2="0" y1="${T}" y2="${T + ph}" stroke="var(--ink)" stroke-opacity=".25" stroke-dasharray="3 3" visibility="hidden"/>`;
+        svg += `<circle id="guideDot" r="5" fill="var(--dot)" stroke="var(--acc)" stroke-width="2.5" visibility="hidden"/>`;
         svg += `</svg><div class="tip" id="tip"></div>`;
         el.innerHTML = svg;
 
@@ -481,8 +481,8 @@
         let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Alimentações executadas por dia">`;
         for (let v = 0; v <= top; v += step) {
             const y = sy(v);
-            svg += `<line x1="${L}" x2="${W - R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#e1ddd4"/>`;
-            svg += `<text x="${L - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11.5" fill="#8d8a82">${v}</text>`;
+            svg += `<line x1="${L}" x2="${W - R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--line)"/>`;
+            svg += `<text x="${L - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11.5" fill="var(--mut)">${v}</text>`;
         }
         o.days.forEach((d, i) => {
             const x = L + i * colW + (colW - bw) / 2;
@@ -490,10 +490,10 @@
             const yAuto = sy(d.auto), yAll = sy(d.auto + d.manual);
             const tip = `${d.full}: ${d.auto} automática(s), ${d.manual} manual(is)`;
             svg += `<g><title>${esc(tip)}</title>`;
-            if (d.auto) svg += `<rect x="${x.toFixed(1)}" y="${yAuto.toFixed(1)}" width="${bw}" height="${(base - yAuto).toFixed(1)}" rx="7" fill="${d.today ? "#1d2321" : "#2f5d57"}"/>`;
-            if (d.manual) svg += `<rect x="${x.toFixed(1)}" y="${yAll.toFixed(1)}" width="${bw}" height="${(yAuto - yAll - (d.auto ? 3 : 0)).toFixed(1)}" rx="7" fill="#c9773c"/>`;
-            if (d.auto + d.manual) svg += `<text x="${(x + bw / 2).toFixed(1)}" y="${(yAll - 8).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="#1d2321">${d.auto + d.manual}</text>`;
-            svg += `<text x="${(x + bw / 2).toFixed(1)}" y="${H - 9}" text-anchor="middle" font-size="12" ${d.today ? 'font-weight="600" fill="#1d2321"' : 'fill="#8d8a82"'}>${esc(d.label)}</text></g>`;
+            if (d.auto) svg += `<rect x="${x.toFixed(1)}" y="${yAuto.toFixed(1)}" width="${bw}" height="${(base - yAuto).toFixed(1)}" rx="7" fill="${d.today ? "var(--today)" : "var(--acc)"}"/>`;
+            if (d.manual) svg += `<rect x="${x.toFixed(1)}" y="${yAll.toFixed(1)}" width="${bw}" height="${(yAuto - yAll - (d.auto ? 3 : 0)).toFixed(1)}" rx="7" fill="var(--amb)"/>`;
+            if (d.auto + d.manual) svg += `<text x="${(x + bw / 2).toFixed(1)}" y="${(yAll - 8).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${d.auto + d.manual}</text>`;
+            svg += `<text x="${(x + bw / 2).toFixed(1)}" y="${H - 9}" text-anchor="middle" font-size="12" ${d.today ? 'font-weight="600" fill="var(--ink)"' : 'fill="var(--mut)"'}>${esc(d.label)}</text></g>`;
         });
         svg += "</svg>";
         el.innerHTML = svg;
@@ -512,18 +512,18 @@
         if (!o || W < 60) return;
         const H = 84, bar = 44;
         const sx = (t) => clamp(((t - o.t0) / (o.t1 - o.t0)) * W, 0, W);
-        let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Linha do tempo do aquecimento"><rect x="0" y="0" width="${W}" height="${bar}" rx="8" fill="#ebe8e0"/>`;
+        let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Linha do tempo do aquecimento"><rect x="0" y="0" width="${W}" height="${bar}" rx="8" fill="var(--card-2)"/>`;
         o.intervals.forEach((iv) => {
             const a = Math.max(iv.a, o.t0), b = Math.min(iv.b, o.t1);
             if (b <= a) return;
             const x = sx(a);
-            svg += `<g><title>${esc(`${whenLabel(iv.a)} · ${iv.open ? "ligado agora" : fmtDuration((iv.b - iv.a) / 60000)}`)}</title><rect x="${x.toFixed(1)}" y="0" width="${Math.max(3, sx(b) - x).toFixed(1)}" height="${bar}" rx="8" fill="#c9773c"/></g>`;
+            svg += `<g><title>${esc(`${whenLabel(iv.a)} · ${iv.open ? "ligado agora" : fmtDuration((iv.b - iv.a) / 60000)}`)}</title><rect x="${x.toFixed(1)}" y="0" width="${Math.max(3, sx(b) - x).toFixed(1)}" height="${bar}" rx="8" fill="var(--amb)"/></g>`;
         });
         xTicks(o.t0, o.t1).forEach((tick) => {
-            svg += `<text x="${sx(tick.t).toFixed(1)}" y="${bar + 24}" text-anchor="middle" font-size="12" fill="#8d8a82">${tick.label}</text>`;
+            svg += `<text x="${sx(tick.t).toFixed(1)}" y="${bar + 24}" text-anchor="middle" font-size="12" fill="var(--mut)">${tick.label}</text>`;
         });
         const now = sx(Date.now());
-        svg += `<line x1="${now.toFixed(1)}" x2="${now.toFixed(1)}" y1="-2" y2="${bar + 6}" stroke="#1d2321" stroke-width="2"/></svg>`;
+        svg += `<line x1="${now.toFixed(1)}" x2="${now.toFixed(1)}" y1="-2" y2="${bar + 6}" stroke="var(--ink)" stroke-width="2"/></svg>`;
         el.innerHTML = svg;
     }
 
@@ -540,18 +540,18 @@
         const sx = (x) => ((x - rmin) / range) * (W - 2) + 1;
 
         let svg = `<svg width="${W}" height="46" viewBox="0 0 ${W} 46">`;
-        svg += `<rect x="${sx(lo).toFixed(1)}" y="0" width="${(sx(hi) - sx(lo)).toFixed(1)}" height="14" rx="3" fill="#2f5d57" opacity=".12"/>`;
+        svg += `<rect x="${sx(lo).toFixed(1)}" y="0" width="${(sx(hi) - sx(lo)).toFixed(1)}" height="14" rx="3" fill="var(--acc)" opacity=".12"/>`;
         const n = Math.round(range / tickStep);
         for (let i = 0; i <= n; i++) {
             const val = rmin + i * tickStep;
             const big = Math.abs(val - Math.round(val * 2) / 2) < 1e-6 && Math.abs((val * 2) % 1) < 1e-6;
-            svg += `<line x1="${sx(val).toFixed(1)}" x2="${sx(val).toFixed(1)}" y1="${big ? 0 : 5}" y2="14" stroke="${big ? "#1d2321" : "#b9b5ab"}" stroke-width="1"/>`;
+            svg += `<line x1="${sx(val).toFixed(1)}" x2="${sx(val).toFixed(1)}" y1="${big ? 0 : 5}" y2="14" stroke="${big ? "var(--ink)" : "var(--tick)"}" stroke-width="1"/>`;
         }
         if (v !== null) {
             const x = sx(clamp(v, rmin, rmax));
-            svg += `<path d="M${x.toFixed(1)} 18 l-5.5 9 h11z" fill="${bad ? "#b8483e" : "#2f5d57"}"/>`;
+            svg += `<path d="M${x.toFixed(1)} 18 l-5.5 9 h11z" fill="${bad ? "var(--red)" : "var(--acc)"}"/>`;
         }
-        svg += `<text x="0" y="44" font-size="11" fill="#8d8a82">${rmin}°</text><text x="${W}" y="44" text-anchor="end" font-size="11" fill="#8d8a82">${rmax}°</text></svg>`;
+        svg += `<text x="0" y="44" font-size="11" fill="var(--mut)">${rmin}°</text><text x="${W}" y="44" text-anchor="end" font-size="11" fill="var(--mut)">${rmax}°</text></svg>`;
         el.innerHTML = svg;
     }
 
@@ -561,11 +561,11 @@
         if (!m) return;
         const r = 34, c = 2 * Math.PI * r;
         el.innerHTML = `<svg width="88" height="88" viewBox="0 0 88 88">
-            <circle cx="44" cy="44" r="${r}" fill="none" stroke="#e1ddd4" stroke-width="6"/>
-            <circle cx="44" cy="44" r="${r}" fill="none" stroke="#1d2321" stroke-width="6" stroke-linecap="round"
+            <circle cx="44" cy="44" r="${r}" fill="none" stroke="var(--line)" stroke-width="6"/>
+            <circle cx="44" cy="44" r="${r}" fill="none" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"
                 stroke-dasharray="${(c * m.fraction).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 44 44)"/>
-            <text x="44" y="${m.small ? 42 : 49}" text-anchor="middle" font-size="19" font-weight="600" fill="#1d2321">${esc(m.big)}</text>
-            ${m.small ? `<text x="44" y="58" text-anchor="middle" font-size="11" fill="#8d8a82">${esc(m.small)}</text>` : ""}
+            <text x="44" y="${m.small ? 42 : 49}" text-anchor="middle" font-size="19" font-weight="600" fill="var(--ink)">${esc(m.big)}</text>
+            ${m.small ? `<text x="44" y="58" text-anchor="middle" font-size="11" fill="var(--mut)">${esc(m.small)}</text>` : ""}
         </svg>`;
     }
 
@@ -638,7 +638,15 @@
 
     function renderHeatCard() {
         const r = state.resumo, cfg = configNow();
-        const h = r ? r.aquecedor : null;
+        let h = r ? r.aquecedor : null;
+
+        // Se o resumo/status dedicado ainda não tiver estado, tenta aproveitar
+        // os eventos de aquecimento registrados no histórico geral da API.
+        if ((!h || !h.estado || h.estado === "desconhecido") && state.heatEvents.length) {
+            const ultimo = state.heatEvents[state.heatEvents.length - 1];
+            h = { ...ultimo, estado: ultimo.estado };
+        }
+
         const box = $("heatState"), foot = $("heatFoot");
         const estado = h ? h.estado : null;
 
@@ -858,8 +866,39 @@
     }
 
     async function loadHeat() {
-        const data = await api("/aquecedor/historico?limite=500");
-        state.heatEvents = (data.eventos || []).slice().sort((a, b) => parseTime(a.data_hora) - parseTime(b.data_hora));
+        const [historico, geral] = await Promise.all([
+            api("/aquecedor/historico?limite=1000"),
+            api("/eventos?limite=1000"),
+        ]);
+
+        // Primeiro utiliza os registros próprios do aquecedor.
+        const dedicados = (historico.eventos || []).map((e) => ({
+            ...e,
+            estado: e.estado,
+        }));
+
+        // Compatibilidade: alguns registros podem existir apenas na tabela
+        // geral de eventos. Converte esses eventos para o formato do gráfico.
+        const tiposAquecedor = (geral.eventos || [])
+            .filter((e) => e.tipo === "aquecedor_ligado" || e.tipo === "aquecedor_desligado")
+            .map((e) => ({
+                id: e.id,
+                estado: e.tipo === "aquecedor_ligado" ? "ligado" : "desligado",
+                origem: /manual/i.test(e.descricao || "") ? "manual" : "automatica",
+                temperatura: null,
+                data_hora: e.data_hora,
+            }));
+
+        const combinados = [...dedicados];
+        const idsExistentes = new Set(dedicados.map((e) => `${e.data_hora}|${e.estado}`));
+        tiposAquecedor.forEach((e) => {
+            const chave = `${e.data_hora}|${e.estado}`;
+            if (!idsExistentes.has(chave)) combinados.push(e);
+        });
+
+        state.heatEvents = combinados
+            .filter((e) => e.estado === "ligado" || e.estado === "desligado")
+            .sort((a, b) => parseTime(a.data_hora) - parseTime(b.data_hora));
     }
 
     async function loadFeeds() {
@@ -888,7 +927,9 @@
             }));
         }
 
-        const heatKey = resumo.aquecedor ? `${resumo.aquecedor.estado}|${resumo.aquecedor.data_hora}` : "";
+        // Inclui a contagem de eventos gerais na chave para atualizar o
+        // histórico mesmo quando o status dedicado do aquecedor não muda.
+        const heatKey = `${resumo.aquecedor ? `${resumo.aquecedor.estado}|${resumo.aquecedor.data_hora}` : ""}|${resumo.total_eventos}`;
         if (heatKey !== state.heatKey) {
             jobs.push(loadHeat().then(() => {
                 state.heatKey = heatKey;
@@ -1418,16 +1459,27 @@
             api("/aquecedor/historico?limite=1000"),
         ]);
 
-        const asc = (hist.eventos || []).slice().sort((a, b) => parseTime(a.data_hora) - parseTime(b.data_hora));
+        const asc = (state.heatEvents.length ? state.heatEvents : (hist.eventos || []))
+            .slice().sort((a, b) => parseTime(a.data_hora) - parseTime(b.data_hora));
         const now = Date.now();
         const intervals = heatIntervals(asc, now).filter((iv) => iv.b >= start);
         const rows = intervals.slice().reverse().slice(0, 60);
 
-        const h = state.resumo ? state.resumo.aquecedor : null;
+        let h = state.resumo ? state.resumo.aquecedor : null;
+        if ((!h || !h.estado || h.estado === "desconhecido") && asc.length) {
+            h = asc[asc.length - 1];
+        }
         const estado = h && h.estado;
         const since = h && h.data_hora ? parseTime(h.data_hora) : null;
-        const share = stats.tempo_total_ligado_minutos !== undefined
-            ? `${Math.round((stats.tempo_total_ligado_minutos / (dias * 1440)) * 100)}% do período` : "";
+
+        // Se os dados vierem do histórico geral, calcula os indicadores a
+        // partir dos intervalos disponíveis, sem substituir os dados da API.
+        const fallbackMinutes = intervals.reduce((total, iv) => total + Math.max(0, iv.b - iv.a) / 60000, 0);
+        const fallbackStarts = intervals.filter((iv) => iv.tIni !== undefined).length;
+        const tempoTotal = Number(stats.tempo_total_ligado_minutos || 0) || fallbackMinutes;
+        const acionamentosTotal = Number(stats.quantidade_acionamentos || 0) || fallbackStarts;
+        const duracaoMedia = Number(stats.duracao_media_minutos || 0) || (fallbackStarts ? fallbackMinutes / fallbackStarts : 0);
+        const share = `${Math.round((tempoTotal / (dias * 1440)) * 100)}% do período`;
         const periodo = dias === 1 ? "nas últimas 24 h" : `nos últimos ${dias} dias`;
 
         const tableRows = rows.map((iv) => `<tr>
@@ -1443,9 +1495,9 @@
             right,
         }, `
             <div class="stats c3">
-                ${stat("Tempo ligado", durParts(stats.tempo_total_ligado_minutos), share)}
-                ${stat("Acionamentos", String(stats.quantidade_acionamentos ?? "--"), `vezes que ligou ${periodo}`)}
-                ${stat("Duração média", durParts(stats.duracao_media_minutos), stats.maior_duracao_minutos ? `maior: ${esc(fmtDuration(stats.maior_duracao_minutos))}` : "por acionamento")}
+                ${stat("Tempo ligado", durParts(tempoTotal), share)}
+                ${stat("Acionamentos", String(acionamentosTotal), `vezes que ligou ${periodo}`)}
+                ${stat("Duração média", durParts(duracaoMedia), stats.maior_duracao_minutos ? `maior: ${esc(fmtDuration(stats.maior_duracao_minutos))}` : "por acionamento")}
             </div>
             <div class="mbody rows">
                 <div class="box">
@@ -1570,7 +1622,30 @@
     // ------------------------------------------------------------------
     // Inicialização
     // ------------------------------------------------------------------
+    // ------------------------------------------------------------------
+    // Tema claro / escuro (só altera o atributo data-theme; as cores vêm do CSS)
+    // ------------------------------------------------------------------
+    function initTheme() {
+        const btn = $("themeBtn");
+        if (!btn) return;
+        const root = document.documentElement;
+        const apply = (theme) => {
+            root.setAttribute("data-theme", theme);
+            const dark = theme === "dark";
+            btn.setAttribute("aria-pressed", String(dark));
+            btn.setAttribute("aria-label", dark ? "Mudar para o tema claro" : "Mudar para o tema escuro");
+            btn.title = dark ? "Tema claro" : "Tema escuro";
+        };
+        apply(root.getAttribute("data-theme") === "dark" ? "dark" : "light");
+        btn.addEventListener("click", () => {
+            const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+            apply(next);
+            try { localStorage.setItem("va_theme", next); } catch (e) { /* sem armazenamento */ }
+        });
+    }
+
     function init() {
+        initTheme();
         initForm();
         initModal();
         $("manualBtn").addEventListener("click", requestFeeding);
